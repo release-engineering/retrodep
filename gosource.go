@@ -100,13 +100,16 @@ func (src GoSource) VendoredProjects() (map[string]*vcs.RepoRoot, error) {
 		// Identify the project
 		return processVendoredSource(&search, pth)
 	}
-	if _, err := os.Stat(search.vendor); err != nil {
+
+	if _, err := os.Stat(src.Topdir()); err != nil {
 		return nil, err
 	}
 
-	err := filepath.Walk(search.vendor, walkfn)
-	if err != nil {
-		return nil, err
+	if _, err := os.Stat(search.vendor); err == nil {
+		err = filepath.Walk(search.vendor, walkfn)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return search.vendored, nil
