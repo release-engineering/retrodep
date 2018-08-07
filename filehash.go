@@ -33,8 +33,8 @@ type FileHash string
 type FileHashes map[string]FileHash
 
 func hash(vcscmd, relativepath, abspath string) (FileHash, error) {
-	if vcscmd != "git" {
-		return FileHash(""), UnknownVCS
+	if vcscmd != vcsGit {
+		return FileHash(""), ErrorUnknownVCS
 	}
 
 	args := []string{"hash-object", "--path", relativepath, abspath}

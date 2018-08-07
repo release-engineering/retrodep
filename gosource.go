@@ -74,12 +74,12 @@ func (src GoSource) Vendor() string {
 	return filepath.Join(src.Topdir(), "vendor")
 }
 
-// VendoreredProjects return a map of project import names to information
+// VendoredProjects return a map of project import names to information
 // about those projects, including which version control system they use.
 func (src GoSource) VendoredProjects() (map[string]*vcs.RepoRoot, error) {
 	search := vendoredSearch{
 		vendor:   src.Vendor(),
-		vendored: make(map[string]*vcs.RepoRoot, 0),
+		vendored: make(map[string]*vcs.RepoRoot),
 	}
 	walkfn := func(pth string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -115,39 +115,60 @@ func (src GoSource) VendoredProjects() (map[string]*vcs.RepoRoot, error) {
 	return search.vendored, nil
 }
 
-// DescribeVendoredProject attempts to identify the tag in the version
-// control system which corresponds to the vendored copy of the
-// project.
-func (src GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (string, error) {
-	pwt, err := NewWorkingTree(project)
-	if err != nil {
-		return "", err
-	}
-	defer pwt.Close()
-
-	projectdir := filepath.Join(src.Vendor(), project.Root)
-	hashes, err := NewFileHashes(pwt.VCS.Cmd, projectdir)
-	if err != nil {
-		return "", err
-	}
-	tags, err := pwt.SemVerTags()
-	if err != nil {
-		return "", err
-	}
-	matched := ""
-	for _, tag := range tags {
-		match, err := pwt.FileHashesAreSubset(hashes, tag)
+func matchFromRefs(hashes FileHashes, wt *WorkingTree, refs []string) (string, error) {
+	for _, ref := range refs {
+		match, err := wt.FileHashesAreSubset(hashes, ref)
 		if err != nil {
 			return "", err
 		}
 		if match {
-			matched = tag
-			break
+			return ref, nil
 		}
 	}
-	if matched == "" {
-		return "", VersionNotFound
+
+	return "", ErrorVersionNotFound
+}
+
+// DescribeVendoredProject attempts to identify the tag in the version
+// control system which corresponds to the vendored copy of the
+// project.
+func (src GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (string, error) {
+	wt, err := NewWorkingTree(project)
+	if err != nil {
+		return "", err
+	}
+	defer wt.Close()
+
+	projectdir := filepath.Join(src.Vendor(), project.Root)
+	hashes, err := NewFileHashes(wt.VCS.Cmd, projectdir)
+	if err != nil {
+		return "", err
 	}
 
-	return matched, nil
+	// First try matching against tags for semantic versions
+	tags, err := wt.SemVerTags()
+	if err != nil {
+		return "", err
+	}
+
+	match, err := matchFromRefs(hashes, wt, tags)
+	if (err != nil && err != ErrorVersionNotFound) || match != "" {
+		return match, err
+	}
+
+	// Next try each revision
+	revs, err := wt.Revisions()
+	if err != nil {
+		return "", err
+	}
+
+	rev, err := matchFromRefs(hashes, wt, revs)
+	if err != nil {
+		return "", err
+	}
+	desc, err := wt.DescribeRevision(rev)
+	if err != nil {
+		return rev, nil
+	}
+	return desc, nil
 }

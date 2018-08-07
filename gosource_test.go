@@ -40,7 +40,7 @@ func TestVendoredProjects(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for each, _ := range got {
+	for each := range got {
 		fmt.Printf("%v\n", each)
 	}
 	matched := len(got) == len(expected)
@@ -49,7 +49,7 @@ func TestVendoredProjects(t *testing.T) {
 	}
 	if matched {
 		for _, repo := range expected {
-			if _, ok := got[repo]; ok == false {
+			if _, ok := got[repo]; !ok {
 				t.Errorf("%s not returned", repo)
 				matched = false
 				break

@@ -15,12 +15,4 @@
 
 package backvendor
 
-import "errors"
-
-// ErrorVersionNotFound indicates a vendored project does not match any semantic
-// tag in the upstream revision control system.
-var ErrorVersionNotFound = errors.New("version not found")
-
-// ErrorUnknownVCS indicates the upstream version control system is not one of
-// those for which support is implemented in go-backvendor.
-var ErrorUnknownVCS = errors.New("unknown VCS")
+const vcsGit = "git"

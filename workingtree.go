@@ -40,6 +40,9 @@ type WorkingTree struct {
 // system for a Go project.
 func NewWorkingTree(project *vcs.RepoRoot) (*WorkingTree, error) {
 	dir, err := ioutil.TempDir("", "go-backvendor.")
+	if err != nil {
+		return nil, err
+	}
 	err = project.VCS.Create(dir, project.Repo)
 	if err != nil {
 		return nil, err
@@ -64,7 +67,7 @@ func (wt *WorkingTree) SemVerTags() ([]string, error) {
 		return nil, err
 	}
 	semvers := make(semver.Collection, 0)
-	semvertags := make(map[*semver.Version]string, 0)
+	semvertags := make(map[*semver.Version]string)
 	for _, tag := range tags {
 		v, err := semver.NewVersion(tag)
 		if err != nil {
@@ -81,13 +84,67 @@ func (wt *WorkingTree) SemVerTags() ([]string, error) {
 	return strtags, nil
 }
 
+// Revisions returns all revisions in the repository.
+func (wt *WorkingTree) Revisions() ([]string, error) {
+	if wt.VCS.Cmd != vcsGit {
+		return nil, ErrorUnknownVCS
+	}
+
+	args := []string{"rev-list", "--all"}
+	cmd := exec.Command(wt.VCS.Cmd, args...)
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+	cmd.Dir = wt.Source.Topdir()
+	err := cmd.Run()
+	if err != nil {
+		os.Stderr.Write(buf.Bytes())
+		return nil, err
+	}
+	revisions := make([]string, 0)
+	scanner := bufio.NewScanner(&buf)
+	for scanner.Scan() {
+		revisions = append(revisions, strings.TrimSpace(scanner.Text()))
+	}
+	return revisions, nil
+}
+
+// DescribeRevision returns a name to describe a particular revision,
+// or the error ErrorVersionNotFound if no such name is available.
+func (wt *WorkingTree) DescribeRevision(rev string) (desc string, err error) {
+	if wt.VCS.Cmd != vcsGit {
+		err = ErrorUnknownVCS
+		return
+	}
+
+	args := []string{"describe", "--tags", rev}
+	cmd := exec.Command(wt.VCS.Cmd, args...)
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+	cmd.Dir = wt.Source.Topdir()
+	err = cmd.Run()
+	if err != nil {
+		output := strings.TrimSpace(buf.String())
+		if output == "fatal: No names found, cannot describe anything." ||
+			strings.HasPrefix(output, "fatal: No tags can describe ") {
+			err = ErrorVersionNotFound
+			return
+		}
+
+		os.Stderr.Write(buf.Bytes())
+		return
+	}
+	desc = strings.TrimSpace(buf.String())
+	return
+}
+
 // FileHashesAreSubset compares a set of files and their hashes with
 // those from a particular tag. It returns true if the provided files
 // and hashes are a subset of those found at the tag.
 func (wt *WorkingTree) FileHashesAreSubset(fh FileHashes, tag string) (bool, error) {
-	if wt.VCS.Cmd != "git" {
-		return false, fmt.Errorf("FileHashesAreSubset not implemented for %s",
-			wt.VCS.Cmd)
+	if wt.VCS.Cmd != vcsGit {
+		return false, ErrorUnknownVCS
 	}
 
 	args := []string{"ls-tree", "-r", tag}
