@@ -40,11 +40,11 @@ func main() {
 	for _, project := range vendored {
 		version, err := src.DescribeVendoredProject(project)
 		if err != nil {
-			if err == backvendor.VersionNotFound {
-				version = "(unknown version)"
-			} else if err == backvendor.UnknownVCS {
-				version = "(unknown VCS)"
-			} else {
+			switch err {
+			case backvendor.ErrorVersionNotFound,
+				backvendor.ErrorUnknownVCS:
+				version = err.Error()
+			default:
 				log.Fatal(err)
 			}
 		}
