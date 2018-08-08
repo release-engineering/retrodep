@@ -43,7 +43,7 @@ func main() {
 				fmt.Printf("%s: ?\n", project.Root)
 				continue
 			}
-			log.Fatal(err)
+			log.Fatalf("%s: %s\n", project.Root, err)
 		}
 		fmt.Printf("%s: %s\n", project.Root, *vp)
 	}
