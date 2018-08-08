@@ -129,46 +129,81 @@ func matchFromRefs(hashes FileHashes, wt *WorkingTree, refs []string) (string, e
 	return "", ErrorVersionNotFound
 }
 
+// Reference describes the origin of a vendored project.
+type Reference struct {
+	// Tag is the tag within the upstream repository which
+	// corresponds exactly to the vendored copy of the project. If
+	// no tag corresponds Tag is "".
+	Tag string
+
+	// Rev is the upstream revision from which the vendored
+	// copy was taken. If this is not known Reference is "".
+	Rev string
+
+	// Desc is a string describing the most recent tag
+	// reachable from the commit named in Reference. This is Tag
+	// if Tag is not "". Otherwise, it is a string starting with a
+	// tag but with additional information appended, such as the
+	// number of revisions past the tag this reference is. If no
+	// such description can be made, Description is "".
+	Desc string
+}
+
 // DescribeVendoredProject attempts to identify the tag in the version
 // control system which corresponds to the vendored copy of the
 // project.
-func (src GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (string, error) {
+func (src GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (*Reference, error) {
 	wt, err := NewWorkingTree(project)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer wt.Close()
 
 	projectdir := filepath.Join(src.Vendor(), project.Root)
 	hashes, err := NewFileHashes(wt.VCS.Cmd, projectdir)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// First try matching against tags for semantic versions
 	tags, err := wt.SemVerTags()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	match, err := matchFromRefs(hashes, wt, tags)
 	if (err != nil && err != ErrorVersionNotFound) || match != "" {
-		return match, err
+		rev, err := wt.RevisionFromTag(match)
+		if err != nil {
+			return nil, err
+		}
+
+		return &Reference{
+			Tag:  match,
+			Rev:  rev,
+			Desc: match,
+		}, nil
 	}
 
 	// Next try each revision
 	revs, err := wt.Revisions()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	rev, err := matchFromRefs(hashes, wt, revs)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	desc, err := wt.DescribeRevision(rev)
-	if err != nil {
-		return rev, nil
+	if err == ErrorVersionNotFound {
+		desc = ""
+	} else if err != nil {
+		return nil, err
 	}
-	return desc, nil
+
+	return &Reference{
+		Rev:  rev,
+		Desc: desc,
+	}, nil
 }

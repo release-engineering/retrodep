@@ -109,6 +109,27 @@ func (wt *WorkingTree) Revisions() ([]string, error) {
 	return revisions, nil
 }
 
+func (wt *WorkingTree) RevisionFromTag(tag string) (rev string, err error) {
+	if wt.VCS.Cmd != vcsGit {
+		err = ErrorUnknownVCS
+		return
+	}
+
+	args := []string{"rev-parse", tag}
+	cmd := exec.Command(wt.VCS.Cmd, args...)
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
+	cmd.Dir = wt.Source.Topdir()
+	err = cmd.Run()
+	if err != nil {
+		os.Stderr.Write(buf.Bytes())
+		return
+	}
+	rev = strings.TrimSpace(buf.String())
+	return
+}
+
 // DescribeRevision returns a name to describe a particular revision,
 // or the error ErrorVersionNotFound if no such name is available.
 func (wt *WorkingTree) DescribeRevision(rev string) (desc string, err error) {

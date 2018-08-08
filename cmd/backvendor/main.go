@@ -36,18 +36,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%d vendored projects\n", len(vendored))
 	for _, project := range vendored {
-		version, err := src.DescribeVendoredProject(project)
+		vp, err := src.DescribeVendoredProject(project)
 		if err != nil {
-			switch err {
-			case backvendor.ErrorVersionNotFound,
-				backvendor.ErrorUnknownVCS:
-				version = err.Error()
-			default:
-				log.Fatal(err)
+			if err == backvendor.ErrorVersionNotFound {
+				fmt.Printf("%s: ?\n", project.Root)
+				continue
 			}
+			log.Fatal(err)
 		}
-		fmt.Printf("%s: %s\n", project.Root, version)
+		fmt.Printf("%s: %s\n", project.Root, *vp)
 	}
 }
