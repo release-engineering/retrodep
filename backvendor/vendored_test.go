@@ -16,15 +16,37 @@
 package backvendor
 
 import (
+	"fmt"
 	"testing"
 )
 
-func TestDirs(t *testing.T) {
+func TestVendoredProjects(t *testing.T) {
 	src := GoSource("testdata/gosource")
-	if src.Topdir() != "testdata/gosource" {
-		t.Fatal("Topdir")
+	expected := []string{
+		"github.com/eggs/ham",
+		"github.com/foo/bar",
 	}
-	if src.Vendor() != "testdata/gosource/vendor" {
-		t.Fatal("Vendor")
+	got, err := src.VendoredProjects()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for each := range got {
+		fmt.Printf("%v\n", each)
+	}
+	matched := len(got) == len(expected)
+	if !matched {
+		t.Errorf("%d != %d", len(got), len(expected))
+	}
+	if matched {
+		for _, repo := range expected {
+			if _, ok := got[repo]; !ok {
+				t.Errorf("%s not returned", repo)
+				matched = false
+				break
+			}
+		}
+	}
+	if !matched {
+		t.Errorf("%v != %v", got, expected)
 	}
 }
