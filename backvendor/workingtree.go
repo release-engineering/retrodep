@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver"
 	"golang.org/x/tools/go/vcs"
@@ -129,28 +130,75 @@ func (wt *WorkingTree) RevisionFromTag(tag string) (string, error) {
 	return rev, nil
 }
 
-// DescribeRevision returns a name to describe a particular revision,
-// or the error ErrorVersionNotFound if no such name is available.
-func (wt *WorkingTree) DescribeRevision(rev string) (desc string, err error) {
+func (wt *WorkingTree) timeFromRevision(rev string) (time.Time, error) {
+	var t time.Time
 	if wt.VCS.Cmd != vcsGit {
-		err = ErrorUnknownVCS
-		return
+		return t, ErrorUnknownVCS
 	}
 
-	buf, err := wt.run("describe", "--tags", rev)
+	buf, err := wt.run("show", "-s", "--pretty=format:%cI", rev)
 	if err != nil {
+		return t, err
+	}
+
+	t, err = time.Parse(time.RFC3339, strings.TrimSpace(buf.String()))
+	return t, err
+}
+
+// reachableTag returns the most recent reachable semver tag.
+func (wt *WorkingTree) reachableTag(rev string) (string, error) {
+	if wt.VCS.Cmd != vcsGit {
+		return "", ErrorUnknownVCS
+	}
+
+	var tag string
+	for _, match := range []string{"v[0-9]*", "[0-9]*"} {
+		buf, err := wt.run("describe", "--match="+match, rev)
 		output := strings.TrimSpace(buf.String())
-		if output == "fatal: No names found, cannot describe anything." ||
-			strings.HasPrefix(output, "fatal: No tags can describe ") {
-			err = ErrorVersionNotFound
-			return
+		if err == nil {
+			tag = output
+			break
 		}
 
-		os.Stderr.Write(buf.Bytes())
-		return
+		if output != "fatal: No names found, cannot describe anything." &&
+			!strings.HasPrefix(output, "fatal: No annotated tags can describe ") &&
+			!strings.HasPrefix(output, "fatal: No tags can describe ") {
+			os.Stderr.Write(buf.Bytes())
+			return "", err
+		}
 	}
-	desc = strings.TrimSpace(buf.String())
-	return
+
+	if tag == "" {
+		return "", ErrorVersionNotFound
+	}
+
+	return tag, nil
+}
+
+func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
+	if wt.VCS.Cmd != vcsGit {
+		return "", ErrorUnknownVCS
+	}
+
+	reachable, err := wt.reachableTag(rev)
+	if err != nil {
+		if err == ErrorVersionNotFound {
+			reachable = "v0.0.0"
+		} else {
+			return "", err
+		}
+	}
+
+	// TODO
+	reachable = "v0.0.0"
+
+	t, err := wt.timeFromRevision(rev)
+	if err != nil {
+		return "", err
+	}
+
+	pseudo := reachable + "-" + t.Format("20060102150405") + "-" + rev[:12]
+	return pseudo, nil
 }
 
 // FileHashesAreSubset compares a set of files and their hashes with

@@ -118,7 +118,7 @@ func matchFromRefs(hashes FileHashes, wt *WorkingTree, refs []string) (string, e
 
 // Reference describes the origin of a vendored project.
 type Reference struct {
-	// Tag is the tag within the upstream repository which
+	// Tag is the semver tag within the upstream repository which
 	// corresponds exactly to the vendored copy of the project. If
 	// no tag corresponds Tag is "".
 	Tag string
@@ -127,13 +127,9 @@ type Reference struct {
 	// copy was taken. If this is not known Reference is "".
 	Rev string
 
-	// Desc is a string describing the most recent tag
-	// reachable from the commit named in Reference. This is Tag
-	// if Tag is not "". Otherwise, it is a string starting with a
-	// tag but with additional information appended, such as the
-	// number of revisions past the tag this reference is. If no
-	// such description can be made, Description is "".
-	Desc string
+	// Ver is the semantic version or pseudo-version for the
+	// commit named in Reference. This is Tag if Tag is not "".
+	Ver string
 }
 
 // DescribeVendoredProject attempts to identify the tag in the version
@@ -166,9 +162,9 @@ func (src GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (*Reference, 
 		}
 
 		return &Reference{
-			Tag:  match,
-			Rev:  rev,
-			Desc: match,
+			Tag: match,
+			Rev: rev,
+			Ver: match,
 		}, nil
 	}
 
@@ -182,15 +178,14 @@ func (src GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (*Reference, 
 	if err != nil {
 		return nil, err
 	}
-	desc, err := wt.DescribeRevision(rev)
-	if err == ErrorVersionNotFound {
-		desc = ""
-	} else if err != nil {
+
+	ver, err := wt.PseudoVersion(rev)
+	if err != nil {
 		return nil, err
 	}
 
 	return &Reference{
-		Rev:  rev,
-		Desc: desc,
+		Rev: rev,
+		Ver: ver,
 	}, nil
 }
