@@ -84,50 +84,49 @@ func (wt *WorkingTree) SemVerTags() ([]string, error) {
 	return strtags, nil
 }
 
+// run runs the VCS command with the provided args
+// and returns a bytes.Buffer.
+func (wt *WorkingTree) run(args ...string) (*bytes.Buffer, error) {
+	p := exec.Command(wt.VCS.Cmd, args...)
+	var buf bytes.Buffer
+	p.Stdout = &buf
+	p.Stderr = &buf
+	p.Dir = wt.Source.Topdir()
+	err := p.Run()
+	return &buf, err
+}
+
 // Revisions returns all revisions in the repository.
 func (wt *WorkingTree) Revisions() ([]string, error) {
 	if wt.VCS.Cmd != vcsGit {
 		return nil, ErrorUnknownVCS
 	}
 
-	args := []string{"rev-list", "--all"}
-	cmd := exec.Command(wt.VCS.Cmd, args...)
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	cmd.Dir = wt.Source.Topdir()
-	err := cmd.Run()
+	buf, err := wt.run("rev-list", "--all")
 	if err != nil {
 		os.Stderr.Write(buf.Bytes())
 		return nil, err
 	}
 	revisions := make([]string, 0)
-	scanner := bufio.NewScanner(&buf)
-	for scanner.Scan() {
-		revisions = append(revisions, strings.TrimSpace(scanner.Text()))
+	output := bufio.NewScanner(buf)
+	for output.Scan() {
+		revisions = append(revisions, strings.TrimSpace(output.Text()))
 	}
 	return revisions, nil
 }
 
-func (wt *WorkingTree) RevisionFromTag(tag string) (rev string, err error) {
+func (wt *WorkingTree) RevisionFromTag(tag string) (string, error) {
 	if wt.VCS.Cmd != vcsGit {
-		err = ErrorUnknownVCS
-		return
+		return "", ErrorUnknownVCS
 	}
 
-	args := []string{"rev-parse", tag}
-	cmd := exec.Command(wt.VCS.Cmd, args...)
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	cmd.Dir = wt.Source.Topdir()
-	err = cmd.Run()
+	buf, err := wt.run("rev-parse")
 	if err != nil {
 		os.Stderr.Write(buf.Bytes())
-		return
+		return "", err
 	}
-	rev = strings.TrimSpace(buf.String())
-	return
+	rev := strings.TrimSpace(buf.String())
+	return rev, nil
 }
 
 // DescribeRevision returns a name to describe a particular revision,
@@ -138,13 +137,7 @@ func (wt *WorkingTree) DescribeRevision(rev string) (desc string, err error) {
 		return
 	}
 
-	args := []string{"describe", "--tags", rev}
-	cmd := exec.Command(wt.VCS.Cmd, args...)
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	cmd.Dir = wt.Source.Topdir()
-	err = cmd.Run()
+	buf, err := wt.run("describe", "--tags", rev)
 	if err != nil {
 		output := strings.TrimSpace(buf.String())
 		if output == "fatal: No names found, cannot describe anything." ||
@@ -168,13 +161,7 @@ func (wt *WorkingTree) FileHashesAreSubset(fh FileHashes, tag string) (bool, err
 		return false, ErrorUnknownVCS
 	}
 
-	args := []string{"ls-tree", "-r", tag}
-	cmd := exec.Command(wt.VCS.Cmd, args...)
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	cmd.Dir = wt.Source.Topdir()
-	err := cmd.Run()
+	buf, err := wt.run("ls-tree", "-r", tag)
 	if err != nil {
 		if strings.HasPrefix(buf.String(), "fatal: Not a valid object name ") {
 			// This is a branch name, not a tag name
@@ -185,7 +172,7 @@ func (wt *WorkingTree) FileHashesAreSubset(fh FileHashes, tag string) (bool, err
 		return false, err
 	}
 	tagfilehashes := make(FileHashes)
-	scanner := bufio.NewScanner(&buf)
+	scanner := bufio.NewScanner(buf)
 	for scanner.Scan() {
 		line := scanner.Text()
 		fields := strings.Fields(line)
