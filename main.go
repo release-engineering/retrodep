@@ -21,7 +21,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/twaugh/backvendor/backvendor"
+	"github.com/release-engineering/backvendor/backvendor"
 )
 
 func main() {
