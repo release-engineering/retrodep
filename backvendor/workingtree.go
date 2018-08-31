@@ -172,6 +172,11 @@ func (wt *WorkingTree) reachableTag(rev string) (string, error) {
 		return "", ErrorVersionNotFound
 	}
 
+	fields := strings.Split(tag, "-")
+	if len(fields) < 3 {
+		return "", fmt.Errorf("too few dashes: %s", tag)
+	}
+	tag = strings.Join(fields[:len(fields)-2], "")
 	return tag, nil
 }
 
@@ -180,24 +185,32 @@ func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
 		return "", ErrorUnknownVCS
 	}
 
+	var next string
 	reachable, err := wt.reachableTag(rev)
-	if err != nil {
-		if err == ErrorVersionNotFound {
-			reachable = "v0.0.0"
+	if err == ErrorVersionNotFound {
+		next = "v0.0.0"
+	} else if err != nil {
+		return "", err
+	} else {
+		ver, err := semver.NewVersion(reachable)
+		if err != nil {
+			next = "v0.0.0"
 		} else {
-			return "", err
+			if ver.Prerelease() == "" {
+				*ver = ver.IncPatch()
+			}
+
+			next = ver.String()
 		}
 	}
-
-	// TODO
-	reachable = "v0.0.0"
 
 	t, err := wt.timeFromRevision(rev)
 	if err != nil {
 		return "", err
 	}
 
-	pseudo := reachable + "-" + t.Format("20060102150405") + "-" + rev[:12]
+	timestamp := t.Format("20060102150405")
+	pseudo := next + "-0." + timestamp + "-" + rev[:12]
 	return pseudo, nil
 }
 
