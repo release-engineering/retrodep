@@ -40,11 +40,21 @@ func main() {
 		vp, err := src.DescribeVendoredProject(project)
 		if err != nil {
 			if err == backvendor.ErrorVersionNotFound {
-				fmt.Printf("%s: ?\n", project.Root)
+				fmt.Printf("%s ?\n", project.Root)
 				continue
 			}
-			log.Fatalf("%s: %s\n", project.Root, err)
+			log.Fatalf("%s: %s\n", err)
 		}
-		fmt.Printf("%s: %s\n", project.Root, *vp)
+		fmt.Printf("%s", project.Root)
+		if vp.Rev != "" {
+			fmt.Printf("@%s", vp.Rev)
+		}
+		if vp.Tag != "" {
+			fmt.Printf(" =%s", vp.Tag)
+		}
+		if vp.Ver != "" {
+			fmt.Printf(" ~%s", vp.Ver)
+		}
+		fmt.Printf("\n")
 	}
 }
