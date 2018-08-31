@@ -121,7 +121,7 @@ func (wt *WorkingTree) RevisionFromTag(tag string) (string, error) {
 		return "", ErrorUnknownVCS
 	}
 
-	buf, err := wt.run("rev-parse")
+	buf, err := wt.run("rev-parse", tag)
 	if err != nil {
 		os.Stderr.Write(buf.Bytes())
 		return "", err
