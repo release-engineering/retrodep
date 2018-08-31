@@ -31,7 +31,9 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(0)
 	}
-	src := backvendor.GoSource(flag.Arg(0))
+	src := backvendor.GoSource{
+		Path: flag.Arg(0),
+	}
 	vendored, err := src.VendoredProjects()
 	if err != nil {
 		log.Fatal(err)

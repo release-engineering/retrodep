@@ -16,90 +16,42 @@
 package backvendor
 
 import (
-	"os"
 	"path/filepath"
-	"strings"
+
+	"github.com/pkg/errors"
 
 	"golang.org/x/tools/go/vcs"
 )
 
-func pathStartsWith(dir, prefix string) bool {
-	plen := len(prefix)
-	if len(dir) <= plen {
-		return dir == prefix
-	}
-
-	return dir[:plen] == prefix && dir[plen] == filepath.Separator
-}
-
-type vendoredSearch struct {
-	// Path to the "vendor" directory
-	vendor string
-
-	// Path to last project identified
-	lastdir string
-
-	// Vendored packages, indexed by Root
-	vendored map[string]*vcs.RepoRoot
-}
-
-func (s *vendoredSearch) inLastDir(pth string) bool {
-	return s.lastdir != "" && pathStartsWith(pth, s.lastdir)
-}
-
-func processVendoredSource(search *vendoredSearch, pth string) error {
-	// For .go source files, see which directory they are in
-	thisimport := filepath.Dir(pth[1+len(search.vendor):])
-	reporoot, err := vcs.RepoRootForImportPath(thisimport, false)
-	if err != nil {
-		return err
-	}
-
-	// The project name is relative to the vendor dir
-	search.vendored[reporoot.Root] = reporoot
-	search.lastdir = filepath.Join(search.vendor, reporoot.Root)
-	return nil
-}
-
 // VendoredProjects return a map of project import names to information
 // about those projects, including which version control system they use.
-func (src GoSource) VendoredProjects() (map[string]*vcs.RepoRoot, error) {
-	search := vendoredSearch{
-		vendor:   src.Vendor(),
-		vendored: make(map[string]*vcs.RepoRoot),
-	}
-	walkfn := func(pth string, info os.FileInfo, err error) error {
-		if err != nil {
-			// Stop on error
-			return err
-		}
-
-		// Ignore paths within the last project we identified
-		if search.inLastDir(pth) {
-			return nil
-		}
-
-		// Ignore anything except Go source
-		if !info.Mode().IsRegular() || !strings.HasSuffix(pth, ".go") {
-			return nil
-		}
-
-		// Identify the project
-		return processVendoredSource(&search, pth)
-	}
-
-	if _, err := os.Stat(src.Topdir()); err != nil {
+func (src *GoSource) VendoredProjects() (map[string]*vcs.RepoRoot, error) {
+	mainpkgs, err := src.Load()
+	if err != nil {
 		return nil, err
 	}
-
-	if _, err := os.Stat(search.vendor); err == nil {
-		err = filepath.Walk(search.vendor, walkfn)
-		if err != nil {
-			return nil, err
+	var toppkg string
+	for _, mainpkg := range mainpkgs {
+		if toppkg == "" || len(mainpkg.PkgPath) < len(toppkg) {
+			toppkg = mainpkg.PkgPath
 		}
 	}
+	vendored := make(map[string]*vcs.RepoRoot)
+	for _, mainpkg := range mainpkgs {
+		for importPath, imp := range mainpkg.Imports {
+			if imp.ID == importPath {
+				continue
+			}
 
-	return search.vendored, nil
+			reporoot, err := vcs.RepoRootForImportPath(importPath, false)
+			if err != nil {
+				return nil, errors.Wrap(err,
+					"from RepoRootForImportPath")
+			}
+			vendored[reporoot.Root] = reporoot
+		}
+	}
+	return vendored, nil
 }
 
 func matchFromRefs(hashes FileHashes, wt *WorkingTree, refs []string) (string, error) {
@@ -135,7 +87,7 @@ type Reference struct {
 // DescribeVendoredProject attempts to identify the tag in the version
 // control system which corresponds to the vendored copy of the
 // project.
-func (src GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (*Reference, error) {
+func (src *GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (*Reference, error) {
 	wt, err := NewWorkingTree(project)
 	if err != nil {
 		return nil, err

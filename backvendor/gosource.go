@@ -17,17 +17,43 @@ package backvendor
 
 import (
 	"path/filepath"
+
+	"github.com/pkg/errors"
+	"golang.org/x/tools/go/packages"
 )
 
 // GoSource represents a filesystem tree containing Go source code.
-type GoSource string
+type GoSource struct {
+	// Path is the top-level path of the filesystem tree.
+	Path string
 
-// Topdir returns the top-level path of the filesystem tree.
-func (src GoSource) Topdir() string {
-	return string(src)
+	// vendor is the path to the vendored source code.
+	vendor string
+
+	// pkgs contains information about the packages and their dependencies.
+	pkgs []*packages.Package
 }
 
 // Vendor returns the path to the vendored source code.
 func (src GoSource) Vendor() string {
-	return filepath.Join(src.Topdir(), "vendor")
+	if src.vendor == "" {
+		src.vendor = filepath.Join(src.Path, "vendor")
+	}
+	return src.vendor
+}
+
+// Load inspects the source code
+func (src *GoSource) Load() ([]*packages.Package, error) {
+	if src.pkgs == nil {
+		cfg := &packages.Config{
+			Mode:  packages.LoadImports,
+			Error: func(error) {},
+		}
+		pkgs, err := packages.Load(cfg, filepath.Join(src.Path, "..."))
+		if err != nil {
+			return nil, errors.Wrap(err, "from Load()")
+		}
+		src.pkgs = pkgs
+	}
+	return src.pkgs, nil
 }
