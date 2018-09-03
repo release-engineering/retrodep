@@ -185,22 +185,26 @@ func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
 		return "", ErrorUnknownVCS
 	}
 
-	var next string
+	suffix := "0." // This commit is *before* some other tag
+	var version string
 	reachable, err := wt.reachableTag(rev)
 	if err == ErrorVersionNotFound {
-		next = "v0.0.0"
+		version = "v0.0.0"
 	} else if err != nil {
 		return "", err
 	} else {
 		ver, err := semver.NewVersion(reachable)
 		if err != nil {
-			next = "v0.0.0"
+			// Not a semantic version. Use a timestamped suffix
+			// to indicate this commit is *after* the tag
+			version = reachable
+			suffix = "1."
 		} else {
 			if ver.Prerelease() == "" {
 				*ver = ver.IncPatch()
 			}
 
-			next = ver.String()
+			version = ver.String()
 		}
 	}
 
@@ -210,7 +214,7 @@ func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
 	}
 
 	timestamp := t.Format("20060102150405")
-	pseudo := next + "-0." + timestamp + "-" + rev[:12]
+	pseudo := version + "-" + suffix + timestamp + "-" + rev[:12]
 	return pseudo, nil
 }
 
