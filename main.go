@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 
 	"github.com/release-engineering/backvendor/backvendor"
 )
@@ -36,7 +37,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, project := range vendored {
+
+	// Sort the projects for predictable output
+	var repos []string
+	for repo, _ := range vendored {
+		repos = append(repos, repo)
+	}
+	sort.Strings(repos)
+
+	// Describe each vendored project
+	for _, repo := range repos {
+		project := vendored[repo]
 		vp, err := src.DescribeVendoredProject(project)
 		if err != nil {
 			if err == backvendor.ErrorVersionNotFound {
