@@ -56,6 +56,13 @@ func hash(vcscmd, relativepath, abspath string) (FileHash, error) {
 func NewFileHashes(vcscmd, root string) (FileHashes, error) {
 	hashes := make(FileHashes)
 	root = path.Clean(root)
+	var rootlen int
+	switch {
+	case root == ".":
+		rootlen = 0
+	default:
+		rootlen = 1 + len(root)
+	}
 	walkfn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -63,7 +70,7 @@ func NewFileHashes(vcscmd, root string) (FileHashes, error) {
 		if info.IsDir() {
 			return nil
 		}
-		relativepath := path[1+len(root):]
+		relativepath := path[rootlen:]
 		filehash, err := hash(vcscmd, relativepath, path)
 		if err != nil {
 			return err
