@@ -17,6 +17,10 @@ package backvendor
 
 import "errors"
 
+// ErrorNeedImportPath indicates the import path for the project
+// cannot be determined automatically and must be provided.
+var ErrorNeedImportPath = errors.New("unable to determine import path")
+
 // ErrorVersionNotFound indicates a vendored project does not match any semantic
 // tag in the upstream revision control system.
 var ErrorVersionNotFound = errors.New("version not found")

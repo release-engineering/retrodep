@@ -16,10 +16,12 @@
 package backvendor
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"go/parser"
+	"go/token"
 
 	"golang.org/x/tools/go/vcs"
 )
@@ -62,12 +64,52 @@ func processVendoredSource(search *vendoredSearch, pth string) error {
 	return nil
 }
 
+func (src GoSource) findImportPath() (string, error) {
+	fset := token.NewFileSet()
+	opts := parser.ParseComments | parser.ImportsOnly
+	pkgs, err := parser.ParseDir(fset, src.Topdir(), nil, opts)
+	if err != nil {
+		return "", err
+	}
+
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Files {
+			if len(file.Comments) < 1 {
+				continue
+			}
+			pkgend := file.Name.NamePos + token.Pos(len(file.Name.Name))
+			comment := file.Comments[0].List[0]
+			if comment.Slash-pkgend > 1 {
+				continue
+			}
+			txt := comment.Text
+			switch {
+			case strings.HasPrefix(txt, "// import \""):
+				if txt[len(txt)-1] != '"' {
+					continue
+				}
+				return txt[len("// import \"") : len(txt)-1], nil
+			case strings.HasPrefix(txt, "/* import \""):
+				if txt[len(txt)-4:] != "\" */" {
+					continue
+				}
+				return txt[len("/* import \"") : len(txt)-4], nil
+			}
+		}
+	}
+	return "", ErrorNeedImportPath
+}
+
 // Project returns information about the project given its import
 // path. If importPath is "" it is deduced from import comments, if
 // available.
 func (src GoSource) Project(importPath string) (*vcs.RepoRoot, error) {
 	if importPath == "" {
-		return nil, errors.New("GoSource.Project: importPath must be supplied")
+		var err error
+		importPath, err = src.findImportPath()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	reporoot, err := vcs.RepoRootForImportPath(importPath, false)
