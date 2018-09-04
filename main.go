@@ -41,17 +41,15 @@ func display(name string, ref *backvendor.Reference) {
 	fmt.Printf("\n")
 }
 
-func main() {
-	flag.Parse()
-	if flag.NArg() < 1 {
-		fmt.Printf("Usage: %s path\n", os.Args[0])
-		flag.PrintDefaults()
-		os.Exit(0)
-	}
-	src := backvendor.GoSource(flag.Arg(0))
-
+func showTopLevel(src *backvendor.GoSource) {
 	main, err := src.Project(*importPath)
 	if err != nil {
+		if err == backvendor.ErrorNeedImportPath {
+			log.Printf("%s: %s", src.Topdir(), err)
+			fmt.Fprintln(os.Stderr,
+				"Provide import path with -importpath")
+			os.Exit(1)
+		}
 		log.Fatalf("%s: %s", src.Topdir(), err)
 	}
 
@@ -64,7 +62,9 @@ func main() {
 	default:
 		log.Fatalf("%s: %s", src.Topdir(), err)
 	}
+}
 
+func showVendored(src *backvendor.GoSource) {
 	vendored, err := src.VendoredProjects()
 	if err != nil {
 		log.Fatal(err)
@@ -72,7 +72,7 @@ func main() {
 
 	// Sort the projects for predictable output
 	var repos []string
-	for repo, _ := range vendored {
+	for repo := range vendored {
 		repos = append(repos, repo)
 	}
 	sort.Strings(repos)
@@ -90,4 +90,17 @@ func main() {
 			log.Fatalf("%s: %s\n", project.Root, err)
 		}
 	}
+}
+
+func main() {
+	flag.Parse()
+	if flag.NArg() < 1 {
+		fmt.Printf("Usage: %s path\n", os.Args[0])
+		flag.PrintDefaults()
+		os.Exit(0)
+	}
+	src := backvendor.GoSource(flag.Arg(0))
+
+	showTopLevel(&src)
+	showVendored(&src)
 }
