@@ -16,12 +16,10 @@
 package backvendor
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"go/parser"
-	"go/token"
 
 	"golang.org/x/tools/go/vcs"
 )
@@ -65,39 +63,68 @@ func processVendoredSource(search *vendoredSearch, pth string) error {
 }
 
 func (src GoSource) findImportPath() (string, error) {
-	fset := token.NewFileSet()
-	opts := parser.ParseComments | parser.ImportsOnly
-	pkgs, err := parser.ParseDir(fset, src.Topdir(), nil, opts)
+	var importPath string
+	search := func(path string, info os.FileInfo, err error) error {
+		if importPath != "" {
+			return filepath.SkipDir
+		}
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			if info.Name() != "." &&
+				strings.HasPrefix(info.Name(), ".") {
+				return filepath.SkipDir
+			}
+			if info.Name() == "vendor" {
+				return filepath.SkipDir
+			}
+		}
+		if !strings.HasSuffix(info.Name(), ".go") {
+			return nil
+		}
+		r, err := os.Open(path)
+		scanner := bufio.NewScanner(bufio.NewReader(r))
+		for scanner.Scan() {
+			line := scanner.Text()
+			fields := strings.Fields(line)
+			if len(fields) < 5 {
+				continue
+			}
+			if fields[0] == "//" || fields[0] == "/*" {
+				continue
+			}
+			if fields[0] != "package" {
+				return nil
+			}
+			if fields[2] != "/*" && fields[2] != "//" {
+				return nil
+			}
+			if fields[3] != "import" {
+				return nil
+			}
+			path := fields[4]
+			if len(path) < 3 {
+				return nil
+			}
+			if path[0] != '"' ||
+				path[len(path)-1] != '"' {
+				return nil
+			}
+			importPath = path[1 : len(path)-1]
+			break
+		}
+		return nil
+	}
+
+	err := filepath.Walk(src.Topdir(), search)
 	if err != nil {
 		return "", err
 	}
-
-	for _, pkg := range pkgs {
-		for _, file := range pkg.Files {
-			if len(file.Comments) < 1 {
-				continue
-			}
-			pkgend := file.Name.NamePos + token.Pos(len(file.Name.Name))
-			comment := file.Comments[0].List[0]
-			if comment.Slash-pkgend > 1 {
-				continue
-			}
-			txt := comment.Text
-			switch {
-			case strings.HasPrefix(txt, "// import \""):
-				if txt[len(txt)-1] != '"' {
-					continue
-				}
-				return txt[len("// import \"") : len(txt)-1], nil
-			case strings.HasPrefix(txt, "/* import \""):
-				if txt[len(txt)-4:] != "\" */" {
-					continue
-				}
-				return txt[len("/* import \"") : len(txt)-4], nil
-			}
-		}
+	if importPath == "" {
+		return "", ErrorNeedImportPath
 	}
-	return "", ErrorNeedImportPath
+	return importPath, nil
 }
 
 // Project returns information about the project given its import
