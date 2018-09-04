@@ -18,6 +18,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -26,6 +27,7 @@ import (
 	"github.com/release-engineering/backvendor/backvendor"
 )
 
+var helpFlag = flag.Bool("help", false, "print help")
 var importPath = flag.String("importpath", "", "top-level import path")
 
 func display(name string, ref *backvendor.Reference) {
@@ -94,20 +96,37 @@ func showVendored(src *backvendor.GoSource) {
 }
 
 func main() {
+	progName := filepath.Base(os.Args[0])
 	log.SetFlags(0) // For typical stderr output of a program.
 
-	flag.Parse()
-	flaw := ""
+	// Stop the default behaviour of printing errors and exiting.
+	// Instead, silence the printing and return them.
+	cli := flag.CommandLine
+	cli.Init("", flag.ContinueOnError)
+	cli.SetOutput(ioutil.Discard)
+	cli.Usage = func() {}
+
+	usage := func(flaw string) {
+		log.Printf("%s: %s\n", progName, flaw)
+		log.Fatalf("usage: %s [-help] [-importpath=toplevel] path\n", progName)
+	}
+	err := cli.Parse(os.Args[1:])
+	if err == flag.ErrHelp || *helpFlag { // Handle ‘-h’.
+		fmt.Printf("%s: help requested\n", progName)
+		cli.SetOutput(os.Stdout)
+		flag.PrintDefaults()
+		os.Exit(0) // Not an error.
+	}
+	if err != nil {
+		usage(err.Error())
+	}
+
 	narg := flag.NArg()
 	if narg == 0 {
-		flaw = "missing path"
-	} else if narg != 1 {
-		flaw = fmt.Sprintf("only one path allowed: %q", flag.Arg(1))
+		usage("missing path")
 	}
-	if flaw != "" {
-		progName := filepath.Base(os.Args[0])
-		log.Printf("%s: %s\n", progName, flaw)
-		log.Fatalf("usage: %s path\n", progName)
+	if narg != 1 {
+		usage(fmt.Sprintf("only one path allowed: %q", flag.Arg(1)))
 	}
 	src := backvendor.GoSource(flag.Arg(0))
 
