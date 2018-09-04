@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/release-engineering/backvendor/backvendor"
@@ -93,11 +94,20 @@ func showVendored(src *backvendor.GoSource) {
 }
 
 func main() {
+	log.SetFlags(0) // For typical stderr output of a program.
+
 	flag.Parse()
-	if flag.NArg() < 1 {
-		fmt.Printf("Usage: %s path\n", os.Args[0])
-		flag.PrintDefaults()
-		os.Exit(0)
+	flaw := ""
+	narg := flag.NArg()
+	if narg == 0 {
+		flaw = "missing path"
+	} else if narg != 1 {
+		flaw = fmt.Sprintf("only one path allowed: %q", flag.Arg(1))
+	}
+	if flaw != "" {
+		progName := filepath.Base(os.Args[0])
+		log.Printf("%s: %s\n", progName, flaw)
+		log.Fatalf("usage: %s path\n", progName)
 	}
 	src := backvendor.GoSource(flag.Arg(0))
 
