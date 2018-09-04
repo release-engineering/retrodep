@@ -16,6 +16,7 @@
 package backvendor
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,6 +60,18 @@ func processVendoredSource(search *vendoredSearch, pth string) error {
 	search.vendored[reporoot.Root] = reporoot
 	search.lastdir = filepath.Join(search.vendor, reporoot.Root)
 	return nil
+}
+
+// Project returns information about the project given its import
+// path. If importPath is "" it is deduced from import comments, if
+// available.
+func (src GoSource) Project(importPath string) (*vcs.RepoRoot, error) {
+	if importPath == "" {
+		return nil, errors.New("GoSource.Project: importPath must be supplied")
+	}
+
+	reporoot, err := vcs.RepoRootForImportPath(importPath, false)
+	return reporoot, err
 }
 
 // VendoredProjects return a map of project import names to information
@@ -132,20 +145,27 @@ type Reference struct {
 	Ver string
 }
 
-// DescribeVendoredProject attempts to identify the tag in the version
-// control system which corresponds to the vendored copy of the
-// project.
-func (src GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (*Reference, error) {
+// DescribeProject attempts to identify the tag in the version control
+// system which corresponds to the project. Vendored files and files
+// whose names begin with "." are ignored.
+func DescribeProject(project *vcs.RepoRoot, root string) (*Reference, error) {
 	wt, err := NewWorkingTree(project)
 	if err != nil {
 		return nil, err
 	}
 	defer wt.Close()
 
-	projectdir := filepath.Join(src.Vendor(), project.Root)
-	hashes, err := NewFileHashes(wt.VCS.Cmd, projectdir)
+	hashes, err := NewFileHashes(wt.VCS.Cmd, root)
 	if err != nil {
 		return nil, err
+	}
+
+	for path, _ := range hashes {
+		if strings.HasPrefix(path, "vendor/") ||
+			// Ignore dot files (e.g. .git)
+			strings.HasPrefix(path, ".") {
+			delete(hashes, path)
+		}
 	}
 
 	// First try matching against tags for semantic versions
@@ -188,4 +208,13 @@ func (src GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (*Reference, 
 		Rev: rev,
 		Ver: ver,
 	}, nil
+}
+
+// DescribeVendoredProject attempts to identify the tag in the version
+// control system which corresponds to the vendored copy of the
+// project.
+func (src GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (*Reference, error) {
+	projectdir := filepath.Join(src.Vendor(), project.Root)
+	ref, err := DescribeProject(project, projectdir)
+	return ref, err
 }

@@ -25,6 +25,22 @@ import (
 	"github.com/release-engineering/backvendor/backvendor"
 )
 
+var importPath = flag.String("importpath", "", "top-level import path")
+
+func display(name string, ref *backvendor.Reference) {
+	fmt.Printf("%s", name)
+	if ref.Rev != "" {
+		fmt.Printf("@%s", ref.Rev)
+	}
+	if ref.Tag != "" {
+		fmt.Printf(" =%s", ref.Tag)
+	}
+	if ref.Ver != "" {
+		fmt.Printf(" ~%s", ref.Ver)
+	}
+	fmt.Printf("\n")
+}
+
 func main() {
 	flag.Parse()
 	if flag.NArg() < 1 {
@@ -33,6 +49,22 @@ func main() {
 		os.Exit(0)
 	}
 	src := backvendor.GoSource(flag.Arg(0))
+
+	main, err := src.Project(*importPath)
+	if err != nil {
+		log.Fatalf("%s: %s", src.Topdir(), err)
+	}
+
+	project, err := backvendor.DescribeProject(main, src.Topdir())
+	switch err {
+	case backvendor.ErrorVersionNotFound:
+		fmt.Printf("*%s ?\n", main.Root)
+	case nil:
+		display("*"+main.Root, project)
+	default:
+		log.Fatalf("%s: %s", src.Topdir(), err)
+	}
+
 	vendored, err := src.VendoredProjects()
 	if err != nil {
 		log.Fatal(err)
@@ -49,23 +81,13 @@ func main() {
 	for _, repo := range repos {
 		project := vendored[repo]
 		vp, err := src.DescribeVendoredProject(project)
-		if err != nil {
-			if err == backvendor.ErrorVersionNotFound {
-				fmt.Printf("%s ?\n", project.Root)
-				continue
-			}
-			log.Fatalf("%s: %s\n", err)
+		switch err {
+		case backvendor.ErrorVersionNotFound:
+			fmt.Printf("%s ?\n", project.Root)
+		case nil:
+			display(project.Root, vp)
+		default:
+			log.Fatalf("%s: %s\n", project.Root, err)
 		}
-		fmt.Printf("%s", project.Root)
-		if vp.Rev != "" {
-			fmt.Printf("@%s", vp.Rev)
-		}
-		if vp.Tag != "" {
-			fmt.Printf(" =%s", vp.Tag)
-		}
-		if vp.Ver != "" {
-			fmt.Printf(" ~%s", vp.Ver)
-		}
-		fmt.Printf("\n")
 	}
 }
