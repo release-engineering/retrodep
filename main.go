@@ -106,13 +106,13 @@ func main() {
 	cli.SetOutput(ioutil.Discard)
 	cli.Usage = func() {}
 
+	usageMsg := fmt.Sprintf("usage: %s [-help] [-importpath=toplevel] path", progName)
 	usage := func(flaw string) {
-		log.Printf("%s: %s\n", progName, flaw)
-		log.Fatalf("usage: %s [-help] [-importpath=toplevel] path\n", progName)
+		log.Fatalf("%s: %s\n%s\n", progName, flaw, usageMsg)
 	}
 	err := cli.Parse(os.Args[1:])
 	if err == flag.ErrHelp || *helpFlag { // Handle ‘-h’.
-		fmt.Printf("%s: help requested\n", progName)
+		fmt.Printf("%s: help requested\n%s\n", progName, usageMsg)
 		cli.SetOutput(os.Stdout)
 		flag.PrintDefaults()
 		os.Exit(0) // Not an error.
