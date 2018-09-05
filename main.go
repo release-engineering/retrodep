@@ -31,17 +31,17 @@ var helpFlag = flag.Bool("help", false, "print help")
 var importPath = flag.String("importpath", "", "top-level import path")
 
 func display(name string, ref *backvendor.Reference) {
-	fmt.Printf("%s", name)
+	fmt.Print(name)
 	if ref.Rev != "" {
-		fmt.Printf("@%s", ref.Rev)
+		fmt.Print("@", ref.Rev)
 	}
 	if ref.Tag != "" {
-		fmt.Printf(" =%s", ref.Tag)
+		fmt.Print(" =", ref.Tag)
 	}
 	if ref.Ver != "" {
-		fmt.Printf(" ~%s", ref.Ver)
+		fmt.Print(" ~", ref.Ver)
 	}
-	fmt.Printf("\n")
+	fmt.Print("\n")
 }
 
 func showTopLevel(src *backvendor.GoSource) {
