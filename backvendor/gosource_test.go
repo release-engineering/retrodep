@@ -20,9 +20,9 @@ import (
 )
 
 func TestDirs(t *testing.T) {
-	src := GoSource("testdata/gosource")
-	if src.Topdir() != "testdata/gosource" {
-		t.Fatal("Topdir")
+	src := NewGoSource("testdata/gosource")
+	if src.Path != "testdata/gosource" {
+		t.Fatal("Path")
 	}
 	if src.Vendor() != "testdata/gosource/vendor" {
 		t.Fatal("Vendor")

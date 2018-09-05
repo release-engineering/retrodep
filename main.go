@@ -48,22 +48,22 @@ func showTopLevel(src *backvendor.GoSource) {
 	main, err := src.Project(*importPath)
 	if err != nil {
 		if err == backvendor.ErrorNeedImportPath {
-			log.Printf("%s: %s", src.Topdir(), err)
+			log.Printf("%s: %s", src.Path, err)
 			fmt.Fprintln(os.Stderr,
 				"Provide import path with -importpath")
 			os.Exit(1)
 		}
-		log.Fatalf("%s: %s", src.Topdir(), err)
+		log.Fatalf("%s: %s", src.Path, err)
 	}
 
-	project, err := backvendor.DescribeProject(main, src.Topdir())
+	project, err := backvendor.DescribeProject(main, src.Path)
 	switch err {
 	case backvendor.ErrorVersionNotFound:
 		fmt.Printf("*%s ?\n", main.Root)
 	case nil:
 		display("*"+main.Root, project)
 	default:
-		log.Fatalf("%s: %s", src.Topdir(), err)
+		log.Fatalf("%s: %s", src.Path, err)
 	}
 }
 
@@ -95,7 +95,7 @@ func showVendored(src *backvendor.GoSource) {
 	}
 }
 
-func processArgs(args []string) backvendor.GoSource {
+func processArgs(args []string) *backvendor.GoSource {
 	progName := filepath.Base(args[0])
 	log.SetFlags(0) // For typical stderr output of a program.
 
@@ -129,11 +129,11 @@ func processArgs(args []string) backvendor.GoSource {
 		usage(fmt.Sprintf("only one path allowed: %q", flag.Arg(1)))
 	}
 
-	return backvendor.GoSource(flag.Arg(0))
+	return backvendor.NewGoSource(flag.Arg(0))
 }
 
 func main() {
 	src := processArgs(os.Args)
-	showTopLevel(&src)
-	showVendored(&src)
+	showTopLevel(src)
+	showVendored(src)
 }
