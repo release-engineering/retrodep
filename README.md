@@ -50,6 +50,6 @@ Only git repositories are currently supported, and a working 'git' is assumed to
 
 Non-Go code is not considered, e.g. binary-only packages, or CGo.
 
-Commits with additional files (e.g. *_linux.go) are identified as matching when they should not.
+Commits with additional files (e.g. \*\_linux.go) are identified as matching when they should not.
 
 Packages vendored from forks will not have matching commits.
