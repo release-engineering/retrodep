@@ -25,12 +25,8 @@ import (
 )
 
 func pathStartsWith(dir, prefix string) bool {
-	plen := len(prefix)
-	if len(dir) <= plen {
-		return dir == prefix
-	}
-
-	return dir[:plen] == prefix && dir[plen] == filepath.Separator
+	return strings.HasPrefix(dir, prefix) &&
+		(len(dir) == len(prefix) || dir[len(prefix)] == filepath.Separator)
 }
 
 type vendoredSearch struct {
