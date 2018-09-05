@@ -21,7 +21,7 @@ import (
 )
 
 func TestVendoredProjects(t *testing.T) {
-	src := GoSource("testdata/gosource")
+	src := NewGoSource("testdata/gosource")
 	expected := []string{
 		"github.com/eggs/ham",
 		"github.com/foo/bar",
