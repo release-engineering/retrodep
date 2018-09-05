@@ -135,10 +135,16 @@ func (src GoSource) findImportPath() (string, error) {
 // available.
 func (src GoSource) Project(importPath string) (*vcs.RepoRoot, error) {
 	if importPath == "" {
-		var err error
-		importPath, err = src.findImportPath()
-		if err != nil {
-			return nil, err
+		if src.Package == "" {
+			var err error
+			importPath, err = src.findImportPath()
+			if err != nil {
+				return nil, err
+			}
+
+			src.Package = importPath
+		} else {
+			importPath = src.Package
 		}
 	}
 
