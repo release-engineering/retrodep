@@ -33,7 +33,7 @@ import (
 // A WorkingTree is a local checkout of Go source code, and
 // information about the version control system it came from.
 type WorkingTree struct {
-	Source GoSource
+	Source *GoSource
 	VCS    *vcs.Cmd
 }
 
@@ -50,20 +50,20 @@ func NewWorkingTree(project *vcs.RepoRoot) (*WorkingTree, error) {
 	}
 
 	return &WorkingTree{
-		Source: GoSource(dir),
+		Source: NewGoSource(dir),
 		VCS:    project.VCS,
 	}, nil
 }
 
 // Close removes the local checkout.
 func (wt *WorkingTree) Close() error {
-	return os.RemoveAll(wt.Source.Topdir())
+	return os.RemoveAll(wt.Source.Path)
 }
 
 // SemVerTags returns a list of the semantic tags, i.e. those tags which are
 // parseable as semantic tags such as v1.1.0.
 func (wt *WorkingTree) SemVerTags() ([]string, error) {
-	tags, err := wt.VCS.Tags(wt.Source.Topdir())
+	tags, err := wt.VCS.Tags(wt.Source.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -92,14 +92,14 @@ func (wt *WorkingTree) run(args ...string) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	p.Stdout = &buf
 	p.Stderr = &buf
-	p.Dir = wt.Source.Topdir()
+	p.Dir = wt.Source.Path
 	err := p.Run()
 	return &buf, err
 }
 
 // Revisions returns all revisions in the repository.
 func (wt *WorkingTree) Revisions() ([]string, error) {
-	if wt.VCS.Cmd != vcsGit {
+	if wt.VCS.Cmd != vcsGit.Cmd {
 		return nil, ErrorUnknownVCS
 	}
 
@@ -117,7 +117,7 @@ func (wt *WorkingTree) Revisions() ([]string, error) {
 }
 
 func (wt *WorkingTree) RevisionFromTag(tag string) (string, error) {
-	if wt.VCS.Cmd != vcsGit {
+	if wt.VCS.Cmd != vcsGit.Cmd {
 		return "", ErrorUnknownVCS
 	}
 
@@ -132,7 +132,7 @@ func (wt *WorkingTree) RevisionFromTag(tag string) (string, error) {
 
 func (wt *WorkingTree) timeFromRevision(rev string) (time.Time, error) {
 	var t time.Time
-	if wt.VCS.Cmd != vcsGit {
+	if wt.VCS.Cmd != vcsGit.Cmd {
 		return t, ErrorUnknownVCS
 	}
 
@@ -147,7 +147,7 @@ func (wt *WorkingTree) timeFromRevision(rev string) (time.Time, error) {
 
 // reachableTag returns the most recent reachable semver tag.
 func (wt *WorkingTree) reachableTag(rev string) (string, error) {
-	if wt.VCS.Cmd != vcsGit {
+	if wt.VCS.Cmd != vcsGit.Cmd {
 		return "", ErrorUnknownVCS
 	}
 
@@ -181,7 +181,7 @@ func (wt *WorkingTree) reachableTag(rev string) (string, error) {
 }
 
 func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
-	if wt.VCS.Cmd != vcsGit {
+	if wt.VCS.Cmd != vcsGit.Cmd {
 		return "", ErrorUnknownVCS
 	}
 
@@ -224,7 +224,7 @@ func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
 // those from a particular tag. It returns true if the provided files
 // and hashes are a subset of those found at the tag.
 func (wt *WorkingTree) FileHashesAreSubset(fh FileHashes, tag string) (bool, error) {
-	if wt.VCS.Cmd != vcsGit {
+	if wt.VCS.Cmd != vcsGit.Cmd {
 		return false, ErrorUnknownVCS
 	}
 

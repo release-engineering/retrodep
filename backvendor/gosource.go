@@ -17,17 +17,53 @@ package backvendor // import "github.com/release-engineering/backvendor/backvend
 
 import (
 	"path/filepath"
+	"strings"
+
+	"golang.org/x/tools/go/vcs"
 )
 
 // GoSource represents a filesystem tree containing Go source code.
-type GoSource string
+type GoSource struct {
+	// Path to the top-level package
+	Path string
 
-// Topdir returns the top-level path of the filesystem tree.
-func (src GoSource) Topdir() string {
-	return string(src)
+	// Package is any import path in this project
+	Package string
+
+	// reporoots maps apparent import paths to actual repositories
+	reporoots map[string]*vcs.RepoRoot
+}
+
+func NewGoSource(path string) *GoSource {
+	return &GoSource{
+		Path: path,
+	}
 }
 
 // Vendor returns the path to the vendored source code.
 func (src GoSource) Vendor() string {
-	return filepath.Join(src.Topdir(), "vendor")
+	return filepath.Join(src.Path, "vendor")
+}
+
+func (src GoSource) RepoRootForImportPath(importPath string) (*vcs.RepoRoot, error) {
+	// First look up replacements
+	path := importPath
+	for {
+		repl, ok := src.reporoots[path]
+		if ok {
+			// Found a replacement repo
+			return repl, nil
+		}
+
+		slash := strings.LastIndex(path, "/")
+		if slash < 1 {
+			break
+		}
+
+		// Try shorter import path
+		path = path[:slash]
+	}
+
+	// No replacement found, use the import path as-is
+	return vcs.RepoRootForImportPath(importPath, false)
 }

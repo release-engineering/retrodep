@@ -45,22 +45,22 @@ func showTopLevel(src *backvendor.GoSource) {
 	main, err := src.Project(*importPath)
 	if err != nil {
 		if err == backvendor.ErrorNeedImportPath {
-			log.Printf("%s: %s", src.Topdir(), err)
+			log.Printf("%s: %s", src.Path, err)
 			fmt.Fprintln(os.Stderr,
 				"Provide import path with -importpath")
 			os.Exit(1)
 		}
-		log.Fatalf("%s: %s", src.Topdir(), err)
+		log.Fatalf("%s: %s", src.Path, err)
 	}
 
-	project, err := backvendor.DescribeProject(main, src.Topdir())
+	project, err := backvendor.DescribeProject(main, src.Path)
 	switch err {
 	case backvendor.ErrorVersionNotFound:
 		fmt.Printf("*%s ?\n", main.Root)
 	case nil:
 		display("*"+main.Root, project)
 	default:
-		log.Fatalf("%s: %s", src.Topdir(), err)
+		log.Fatalf("%s: %s", src.Path, err)
 	}
 }
 
@@ -99,8 +99,7 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(0)
 	}
-	src := backvendor.GoSource(flag.Arg(0))
-
-	showTopLevel(&src)
-	showVendored(&src)
+	src := backvendor.NewGoSource(flag.Arg(0))
+	showTopLevel(src)
+	showVendored(src)
 }

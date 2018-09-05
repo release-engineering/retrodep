@@ -48,10 +48,10 @@ func (s *vendoredSearch) inLastDir(pth string) bool {
 	return s.lastdir != "" && pathStartsWith(pth, s.lastdir)
 }
 
-func processVendoredSource(search *vendoredSearch, pth string) error {
+func processVendoredSource(src *GoSource, search *vendoredSearch, pth string) error {
 	// For .go source files, see which directory they are in
 	thisimport := filepath.Dir(pth[1+len(search.vendor):])
-	reporoot, err := vcs.RepoRootForImportPath(thisimport, false)
+	reporoot, err := src.RepoRootForImportPath(thisimport)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (src GoSource) findImportPath() (string, error) {
 		return nil
 	}
 
-	err := filepath.Walk(src.Topdir(), search)
+	err := filepath.Walk(src.Path, search)
 	if err != nil {
 		return "", err
 	}
@@ -167,10 +167,10 @@ func (src GoSource) VendoredProjects() (map[string]*vcs.RepoRoot, error) {
 		}
 
 		// Identify the project
-		return processVendoredSource(&search, pth)
+		return processVendoredSource(&src, &search, pth)
 	}
 
-	if _, err := os.Stat(src.Topdir()); err != nil {
+	if _, err := os.Stat(src.Path); err != nil {
 		return nil, err
 	}
 
