@@ -29,6 +29,7 @@ import (
 
 var helpFlag = flag.Bool("help", false, "print help")
 var importPath = flag.String("importpath", "", "top-level import path")
+var depsFlag = flag.Bool("deps", true, "show vendored dependencies")
 
 func display(name string, ref *backvendor.Reference) {
 	fmt.Printf("%s", name)
@@ -106,7 +107,7 @@ func processArgs(args []string) *backvendor.GoSource {
 	cli.SetOutput(ioutil.Discard)
 	cli.Usage = func() {}
 
-	usageMsg := fmt.Sprintf("usage: %s [-help] [-importpath=toplevel] path", progName)
+	usageMsg := fmt.Sprintf("usage: %s [-help] [-importpath=toplevel] [-deps=false] path", progName)
 	usage := func(flaw string) {
 		log.Fatalf("%s: %s\n%s\n", progName, flaw, usageMsg)
 	}
@@ -135,5 +136,7 @@ func processArgs(args []string) *backvendor.GoSource {
 func main() {
 	src := processArgs(os.Args)
 	showTopLevel(src)
-	showVendored(src)
+	if *depsFlag {
+		showVendored(src)
+	}
 }
