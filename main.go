@@ -95,8 +95,8 @@ func showVendored(src *backvendor.GoSource) {
 	}
 }
 
-func main() {
-	progName := filepath.Base(os.Args[0])
+func processArgs(args []string) backvendor.GoSource {
+	progName := filepath.Base(args[0])
 	log.SetFlags(0) // For typical stderr output of a program.
 
 	// Stop the default behaviour of printing errors and exiting.
@@ -110,7 +110,7 @@ func main() {
 	usage := func(flaw string) {
 		log.Fatalf("%s: %s\n%s\n", progName, flaw, usageMsg)
 	}
-	err := cli.Parse(os.Args[1:])
+	err := cli.Parse(args[1:])
 	if err == flag.ErrHelp || *helpFlag { // Handle ‘-h’.
 		fmt.Printf("%s: help requested\n%s\n", progName, usageMsg)
 		cli.SetOutput(os.Stdout)
@@ -128,8 +128,12 @@ func main() {
 	if narg != 1 {
 		usage(fmt.Sprintf("only one path allowed: %q", flag.Arg(1)))
 	}
-	src := backvendor.GoSource(flag.Arg(0))
 
+	return backvendor.GoSource(flag.Arg(0))
+}
+
+func main() {
+	src := processArgs(os.Args)
 	showTopLevel(&src)
 	showVendored(&src)
 }
