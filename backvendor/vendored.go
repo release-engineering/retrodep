@@ -84,6 +84,9 @@ func (src GoSource) findImportPath() (string, error) {
 			return nil
 		}
 		r, err := os.Open(path)
+		if err != nil {
+			return err
+		}
 		scanner := bufio.NewScanner(bufio.NewReader(r))
 		for scanner.Scan() {
 			line := scanner.Text()
