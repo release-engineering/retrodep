@@ -16,10 +16,12 @@
 package backvendor // import "github.com/release-engineering/backvendor/backvendor"
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
 	"golang.org/x/tools/go/vcs"
+	"gopkg.in/yaml.v2"
 )
 
 // GoSource represents a filesystem tree containing Go source code.
@@ -34,10 +36,49 @@ type GoSource struct {
 	reporoots map[string]*vcs.RepoRoot
 }
 
+type Glide struct {
+	Package string
+	Import  []struct {
+		Package string
+		Repo    string `json:omitempty`
+	}
+}
+
 func NewGoSource(path string) *GoSource {
-	return &GoSource{
+	src := &GoSource{
 		Path: path,
 	}
+
+	f, err := os.Open(filepath.Join(path, "glide.yaml"))
+	if err != nil {
+		return src
+	}
+	defer f.Close()
+
+	// There is a glide.yaml so inspect it
+	dec := yaml.NewDecoder(f)
+	var glide Glide
+	err = dec.Decode(&glide)
+	if err != nil {
+		return src
+	}
+
+	src.Package = glide.Package
+	reporoots := make(map[string]*vcs.RepoRoot)
+	for _, imp := range glide.Import {
+		if imp.Repo == "" {
+			continue
+		}
+
+		reporoots[imp.Package] = &vcs.RepoRoot{
+			VCS:  vcsGit,
+			Repo: imp.Repo,
+			Root: imp.Package,
+		}
+	}
+
+	src.reporoots = reporoots
+	return src
 }
 
 // Vendor returns the path to the vendored source code.
