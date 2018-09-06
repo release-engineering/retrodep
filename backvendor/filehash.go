@@ -75,6 +75,8 @@ func NewFileHashes(vcscmd, root string) (FileHashes, error) {
 		}
 		if info.IsDir() {
 			// Check for .gitattributes in this directory
+			// FIXME: gitattributes(5) describes a more complex file
+			// format than handled here.  Can git-check-attr(1) help?
 			ga, err := os.Open(filepath.Join(path, ".gitattributes"))
 			if err != nil {
 				return nil
