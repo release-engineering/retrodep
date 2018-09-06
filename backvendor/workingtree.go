@@ -206,7 +206,7 @@ func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
 				suffix = ".0."
 			}
 
-			version = ver.String()
+			version = "v" + ver.String()
 		}
 	}
 
