@@ -33,13 +33,13 @@ type FileHash string
 // version control system, to their hashes.
 type FileHashes map[string]FileHash
 
-func hash(vcscmd, relativepath, abspath string) (FileHash, error) {
-	if vcscmd != vcsGit.Cmd {
+func hash(vcsCmd, relativePath, absPath string) (FileHash, error) {
+	if vcsCmd != vcsGit.Cmd {
 		return FileHash(""), ErrorUnknownVCS
 	}
 
-	args := []string{"hash-object", "--path", relativepath, abspath}
-	cmd := exec.Command(vcscmd, args...)
+	args := []string{"hash-object", "--path", relativePath, absPath}
+	cmd := exec.Command(vcsCmd, args...)
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
 	cmd.Stderr = &buf
@@ -53,8 +53,8 @@ func hash(vcscmd, relativepath, abspath string) (FileHash, error) {
 }
 
 // NewFileHashes returns a new FileHashes from a filesystem tree at root,
-// whose files belong to the version control system named in vcscmd.
-func NewFileHashes(vcscmd, root string) (FileHashes, error) {
+// whose files belong to the version control system named in vcsCmd.
+func NewFileHashes(vcsCmd, root string) (FileHashes, error) {
 	hashes := make(FileHashes)
 	root = path.Clean(root)
 	var rootlen int
@@ -102,12 +102,12 @@ func NewFileHashes(vcscmd, root string) (FileHashes, error) {
 		if !info.Mode().IsRegular() {
 			return nil
 		}
-		relativepath := path[rootlen:]
-		filehash, err := hash(vcscmd, relativepath, path)
+		relativePath := path[rootlen:]
+		fileHash, err := hash(vcsCmd, relativePath, path)
 		if err != nil {
 			return err
 		}
-		hashes[relativepath] = filehash
+		hashes[relativePath] = fileHash
 		return nil
 	}
 	err := filepath.Walk(root, walkfn)

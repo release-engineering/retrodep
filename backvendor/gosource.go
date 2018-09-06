@@ -32,8 +32,8 @@ type GoSource struct {
 	// Package is any import path in this project
 	Package string
 
-	// reporoots maps apparent import paths to actual repositories
-	reporoots map[string]*vcs.RepoRoot
+	// repoRoots maps apparent import paths to actual repositories
+	repoRoots map[string]*vcs.RepoRoot
 }
 
 type Glide struct {
@@ -64,20 +64,20 @@ func NewGoSource(path string) *GoSource {
 	}
 
 	src.Package = glide.Package
-	reporoots := make(map[string]*vcs.RepoRoot)
+	repoRoots := make(map[string]*vcs.RepoRoot)
 	for _, imp := range glide.Import {
 		if imp.Repo == "" {
 			continue
 		}
 
-		reporoots[imp.Package] = &vcs.RepoRoot{
+		repoRoots[imp.Package] = &vcs.RepoRoot{
 			VCS:  vcsGit,
 			Repo: imp.Repo,
 			Root: imp.Package,
 		}
 	}
 
-	src.reporoots = reporoots
+	src.repoRoots = repoRoots
 	return src
 }
 
@@ -90,7 +90,7 @@ func (src GoSource) RepoRootForImportPath(importPath string) (*vcs.RepoRoot, err
 	// First look up replacements
 	path := importPath
 	for {
-		repl, ok := src.reporoots[path]
+		repl, ok := src.repoRoots[path]
 		if ok {
 			// Found a replacement repo
 			return repl, nil

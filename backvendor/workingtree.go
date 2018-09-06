@@ -68,21 +68,21 @@ func (wt *WorkingTree) SemVerTags() ([]string, error) {
 		return nil, err
 	}
 	semvers := make(semver.Collection, 0)
-	semvertags := make(map[*semver.Version]string)
+	semverTags := make(map[*semver.Version]string)
 	for _, tag := range tags {
 		v, err := semver.NewVersion(tag)
 		if err != nil {
 			continue
 		}
 		semvers = append(semvers, v)
-		semvertags[v] = tag
+		semverTags[v] = tag
 	}
 	sort.Sort(sort.Reverse(semvers))
-	strtags := make([]string, len(semvers))
+	strTags := make([]string, len(semvers))
 	for i, v := range semvers {
-		strtags[i] = semvertags[v]
+		strTags[i] = semverTags[v]
 	}
-	return strtags, nil
+	return strTags, nil
 }
 
 // run runs the VCS command with the provided args
@@ -238,7 +238,7 @@ func (wt *WorkingTree) FileHashesAreSubset(fh FileHashes, tag string) (bool, err
 		os.Stderr.Write(buf.Bytes())
 		return false, err
 	}
-	tagfilehashes := make(FileHashes)
+	tagFileHashes := make(FileHashes)
 	scanner := bufio.NewScanner(buf)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -251,15 +251,15 @@ func (wt *WorkingTree) FileHashesAreSubset(fh FileHashes, tag string) (bool, err
 		if _, err = fmt.Sscanf(fields[0], "%o", &mode); err != nil {
 			return false, err
 		}
-		tagfilehashes[fields[3]] = FileHash(fields[2])
+		tagFileHashes[fields[3]] = FileHash(fields[2])
 	}
-	for path, filehash := range fh {
-		tagfilehash, ok := tagfilehashes[path]
+	for path, fileHash := range fh {
+		tagFileHash, ok := tagFileHashes[path]
 		if !ok {
 			// File not present in tag
 			return false, nil
 		}
-		if filehash != tagfilehash {
+		if fileHash != tagFileHash {
 			// Hash does not match
 			return false, nil
 		}
