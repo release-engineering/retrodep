@@ -72,7 +72,7 @@ func (src GoSource) findImportPath() (string, error) {
 				strings.HasPrefix(info.Name(), ".") {
 				return filepath.SkipDir
 			}
-			if info.Name() == "vendor" {
+			if info.Name() == "vendor" || info.Name() == "testdata" {
 				return filepath.SkipDir
 			}
 		}
