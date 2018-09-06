@@ -1,0 +1,11 @@
+language: go
+branches:
+  only:
+  - master
+sudo: false
+before_install:
+  - go get -t ./...
+script:
+  - go test ./... -v
+notifications:
+  email: false
