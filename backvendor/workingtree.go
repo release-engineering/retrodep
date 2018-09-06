@@ -40,7 +40,7 @@ type WorkingTree struct {
 // NewWorkingTree creates a local checkout of the version control
 // system for a Go project.
 func NewWorkingTree(project *vcs.RepoRoot) (*WorkingTree, error) {
-	dir, err := ioutil.TempDir("", "go-backvendor.")
+	dir, err := ioutil.TempDir("", "backvendor.")
 	if err != nil {
 		return nil, err
 	}
