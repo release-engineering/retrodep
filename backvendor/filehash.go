@@ -16,6 +16,7 @@
 package backvendor
 
 import (
+	"bufio"
 	"bytes"
 	"os"
 	"os/exec"
@@ -63,11 +64,39 @@ func NewFileHashes(vcscmd, root string) (FileHashes, error) {
 	default:
 		rootlen = 1 + len(root)
 	}
+	ignore := make(map[string]struct{}) // set of pathnames to ignore
 	walkfn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
+		if _, ok := ignore[path]; ok {
+			// This pathname has been ignored due to .gitattributes
+			return nil
+		}
 		if info.IsDir() {
+			// Check for .gitattributes in this directory
+			ga, err := os.Open(filepath.Join(path, ".gitattributes"))
+			if err != nil {
+				return nil
+			}
+			defer ga.Close()
+
+			scanner := bufio.NewScanner(bufio.NewReader(ga))
+			for scanner.Scan() {
+				fields := strings.Fields(scanner.Text())
+				if len(fields) < 2 {
+					continue
+				}
+				for _, field := range fields[1:] {
+					if field == "export-subst" {
+						// Not expected to have matching hash
+						fn := filepath.Join(path, fields[0])
+						ignore[fn] = struct{}{}
+						break
+					}
+				}
+			}
+
 			return nil
 		}
 		relativepath := path[rootlen:]
