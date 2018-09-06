@@ -14,6 +14,37 @@ Installation
 go get github.com/release-engineering/backvendor
 ```
 
+Running
+-------
+
+```
+$ backvendor -h
+backvendor: help requested
+usage: backvendor [-help] [-importpath=toplevel] [-deps=false] path
+  -deps
+        show vendored dependencies (default true)
+  -help
+        print help
+  -importpath string
+        top-level import path
+```
+
+In many cases backvendor can work out the import path for the top-level project. In those cases, simply supply the directory name to examine:
+```
+$ backvendor src
+```
+
+If it cannot determine the import path, provide it with -importpath:
+```
+$ backvendor -importpath github.com/example/name src
+```
+
+By default both the top-level project and its vendored dependencies are examined. To ignore vendored dependencies supply -deps=false:
+```
+$ backvendor -deps=false -importpath github.com/example/name src
+```
+
+
 Example output
 --------------
 
