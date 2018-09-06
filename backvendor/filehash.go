@@ -99,6 +99,9 @@ func NewFileHashes(vcscmd, root string) (FileHashes, error) {
 
 			return nil
 		}
+		if !info.Mode().IsRegular() {
+			return nil
+		}
 		relativepath := path[rootlen:]
 		filehash, err := hash(vcscmd, relativepath, path)
 		if err != nil {
