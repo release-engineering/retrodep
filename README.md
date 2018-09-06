@@ -1,4 +1,4 @@
-backvendor
+Backvendor
 ==========
 
 This command inspects a Go source tree with vendored packages and attempts to work out the versions of the packages which are vendored, as well as the version of top-level package itself.
@@ -7,7 +7,15 @@ It does this by comparing file hashes of the packages with those from the upstre
 
 If no semantic version tag matches but a commit is found that matches, a pseudo-version is generated.
 
-Example output:
+Installation
+------------
+
+```
+go get github.com/release-engineering/backvendor
+```
+
+Example output
+--------------
 
 ```
 $ backvendor -importpath github.com/docker/distribution go/src/github.com/docker/distribution
