@@ -243,7 +243,7 @@ func DescribeProject(project *vcs.RepoRoot, root string) (*Reference, error) {
 	}
 
 	// First try matching against tags for semantic versions
-	tags, err := wt.SemVerTags()
+	tags, err := wt.VersionTags()
 	if err != nil {
 		return nil, err
 	}

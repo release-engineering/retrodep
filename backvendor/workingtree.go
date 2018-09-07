@@ -60,27 +60,27 @@ func (wt *WorkingTree) Close() error {
 	return os.RemoveAll(wt.Source.Path)
 }
 
-// SemVerTags returns a list of the semantic tags, i.e. those tags which are
-// parseable as semantic tags such as v1.1.0.
-func (wt *WorkingTree) SemVerTags() ([]string, error) {
+// VersionTags returns the tags that are parseable as semantic tags,
+// e.g. v1.1.0.
+func (wt *WorkingTree) VersionTags() ([]string, error) {
 	tags, err := wt.VCS.Tags(wt.Source.Path)
 	if err != nil {
 		return nil, err
 	}
-	semvers := make(semver.Collection, 0)
-	semverTags := make(map[*semver.Version]string)
+	versions := make(semver.Collection, 0)
+	versionTags := make(map[*semver.Version]string)
 	for _, tag := range tags {
 		v, err := semver.NewVersion(tag)
 		if err != nil {
 			continue
 		}
-		semvers = append(semvers, v)
-		semverTags[v] = tag
+		versions = append(versions, v)
+		versionTags[v] = tag
 	}
-	sort.Sort(sort.Reverse(semvers))
-	strTags := make([]string, len(semvers))
-	for i, v := range semvers {
-		strTags[i] = semverTags[v]
+	sort.Sort(sort.Reverse(versions))
+	strTags := make([]string, len(versions))
+	for i, v := range versions {
+		strTags[i] = versionTags[v]
 	}
 	return strTags, nil
 }
