@@ -28,3 +28,36 @@ func TestDirs(t *testing.T) {
 		t.Fatal("Vendor")
 	}
 }
+
+func TestImportPathFromFilepath(t *testing.T) {
+	tests := []struct {
+		filePath, importPath string
+		ok                   bool
+	}{
+		{
+			"/home/foo/github.com/release-engineering/backvendor",
+			"github.com/release-engineering/backvendor",
+			true,
+		},
+		{
+			"release-engineering/backvendor",
+			"",
+			false,
+		},
+	}
+
+	for _, test := range tests {
+		importPath, ok := importPathFromFilepath(test.filePath)
+		if ok != test.ok {
+			t.Errorf("for %s got _,%v", test.filePath, ok)
+			continue
+		}
+		if !ok {
+			continue
+		}
+
+		if importPath != test.importPath {
+			t.Errorf("for %s got %v,_", test.filePath, importPath)
+		}
+	}
+}

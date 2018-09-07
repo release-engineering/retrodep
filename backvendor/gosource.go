@@ -16,6 +16,7 @@
 package backvendor // import "github.com/release-engineering/backvendor/backvendor"
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,9 +50,24 @@ func NewGoSource(path string) *GoSource {
 		Path: path,
 	}
 
-	f, err := os.Open(filepath.Join(path, "glide.yaml"))
+	if !readGlideConf(src) {
+		if importPath, err := findImportComment(src); err == nil {
+			src.Package = importPath
+		} else if importPath, ok := importPathFromFilepath(path); ok {
+			src.Package = importPath
+		}
+	}
+
+	return src
+}
+
+// readGlideConf parses glide.yaml to extract the package name and the
+// import path repository replacements. It returns true if it parsed
+// successfully.
+func readGlideConf(src *GoSource) bool {
+	f, err := os.Open(filepath.Join(src.Path, "glide.yaml"))
 	if err != nil {
-		return src
+		return false
 	}
 	defer f.Close()
 
@@ -60,7 +76,7 @@ func NewGoSource(path string) *GoSource {
 	var glide Glide
 	err = dec.Decode(&glide)
 	if err != nil {
-		return src
+		return false
 	}
 
 	src.Package = glide.Package
@@ -78,12 +94,132 @@ func NewGoSource(path string) *GoSource {
 	}
 
 	src.repoRoots = repoRoots
-	return src
+	return true
+}
+
+// importPathFromFilepath attempts to use the project directory path to
+// infer its import path.
+func importPathFromFilepath(pth string) (string, bool) {
+	if len(pth) < 1 {
+		return "", false
+	}
+
+	var err error
+	if pth == "." {
+		pth, err = os.Getwd()
+		if err != nil {
+			return "", false
+		}
+	}
+
+	if pth[0] == filepath.Separator {
+		pth = pth[1:]
+	}
+
+	components := strings.Split(pth, string(filepath.Separator))
+	if len(components) < 2 {
+		return "", false
+	}
+
+	for i := len(components) - 2; i >= 0; i -= 1 {
+		if strings.Index(components[i], ".") == -1 {
+			// Not a hostname
+			continue
+		}
+
+		pth := strings.Join(components[i:len(components)], "/")
+		repoRoot, err := vcs.RepoRootForImportPath(pth, false)
+		if err == nil {
+			return repoRoot.Root, true
+		}
+	}
+
+	return "", false
+}
+
+func findImportComment(src *GoSource) (string, error) {
+	var importPath string
+	search := func(path string, info os.FileInfo, err error) error {
+		if importPath != "" {
+			return filepath.SkipDir
+		}
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			if info.Name() != "." &&
+				strings.HasPrefix(info.Name(), ".") {
+				return filepath.SkipDir
+			}
+			if info.Name() == "vendor" || info.Name() == "testdata" {
+				return filepath.SkipDir
+			}
+		}
+		if !strings.HasSuffix(info.Name(), ".go") {
+			return nil
+		}
+		r, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		scanner := bufio.NewScanner(bufio.NewReader(r))
+		for scanner.Scan() {
+			line := scanner.Text()
+			fields := strings.Fields(line)
+			if len(fields) < 5 {
+				continue
+			}
+			if fields[0] == "//" || fields[0] == "/*" {
+				continue
+			}
+			if fields[0] != "package" {
+				return nil
+			}
+			if fields[2] != "/*" && fields[2] != "//" {
+				return nil
+			}
+			if fields[3] != "import" {
+				return nil
+			}
+			path := fields[4]
+			if len(path) < 3 {
+				return nil
+			}
+			if path[0] != '"' ||
+				path[len(path)-1] != '"' {
+				return nil
+			}
+			importPath = path[1 : len(path)-1]
+			break
+		}
+		return nil
+	}
+
+	err := filepath.Walk(src.Path, search)
+	if err != nil {
+		return "", err
+	}
+	if importPath == "" {
+		return "", ErrorNeedImportPath
+	}
+	return importPath, nil
 }
 
 // Vendor returns the path to the vendored source code.
 func (src GoSource) Vendor() string {
 	return filepath.Join(src.Path, "vendor")
+}
+
+// Project returns information about the project given its import
+// path. If importPath is "" it is deduced from import comments, if
+// available.
+func (src GoSource) Project(importPath string) (*vcs.RepoRoot, error) {
+	if importPath == "" {
+		importPath = src.Package
+	}
+
+	repoRoot, err := vcs.RepoRootForImportPath(importPath, false)
+	return repoRoot, err
 }
 
 func (src GoSource) RepoRootForImportPath(importPath string) (*vcs.RepoRoot, error) {
