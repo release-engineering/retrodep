@@ -16,7 +16,6 @@
 package backvendor
 
 import (
-	"bufio"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,96 +55,6 @@ func processVendoredSource(src *GoSource, search *vendoredSearch, pth string) er
 	search.vendored[repoRoot.Root] = repoRoot
 	search.lastdir = filepath.Join(search.vendor, repoRoot.Root)
 	return nil
-}
-
-func (src GoSource) findImportPath() (string, error) {
-	var importPath string
-	search := func(path string, info os.FileInfo, err error) error {
-		if importPath != "" {
-			return filepath.SkipDir
-		}
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			if info.Name() != "." &&
-				strings.HasPrefix(info.Name(), ".") {
-				return filepath.SkipDir
-			}
-			if info.Name() == "vendor" || info.Name() == "testdata" {
-				return filepath.SkipDir
-			}
-		}
-		if !strings.HasSuffix(info.Name(), ".go") {
-			return nil
-		}
-		r, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		scanner := bufio.NewScanner(bufio.NewReader(r))
-		for scanner.Scan() {
-			line := scanner.Text()
-			fields := strings.Fields(line)
-			if len(fields) < 5 {
-				continue
-			}
-			if fields[0] == "//" || fields[0] == "/*" {
-				continue
-			}
-			if fields[0] != "package" {
-				return nil
-			}
-			if fields[2] != "/*" && fields[2] != "//" {
-				return nil
-			}
-			if fields[3] != "import" {
-				return nil
-			}
-			path := fields[4]
-			if len(path) < 3 {
-				return nil
-			}
-			if path[0] != '"' ||
-				path[len(path)-1] != '"' {
-				return nil
-			}
-			importPath = path[1 : len(path)-1]
-			break
-		}
-		return nil
-	}
-
-	err := filepath.Walk(src.Path, search)
-	if err != nil {
-		return "", err
-	}
-	if importPath == "" {
-		return "", ErrorNeedImportPath
-	}
-	return importPath, nil
-}
-
-// Project returns information about the project given its import
-// path. If importPath is "" it is deduced from import comments, if
-// available.
-func (src GoSource) Project(importPath string) (*vcs.RepoRoot, error) {
-	if importPath == "" {
-		if src.Package == "" {
-			var err error
-			importPath, err = src.findImportPath()
-			if err != nil {
-				return nil, err
-			}
-
-			src.Package = importPath
-		} else {
-			importPath = src.Package
-		}
-	}
-
-	repoRoot, err := vcs.RepoRootForImportPath(importPath, false)
-	return repoRoot, err
 }
 
 // VendoredProjects return a map of project import names to information
