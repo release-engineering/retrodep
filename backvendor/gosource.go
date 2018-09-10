@@ -199,9 +199,6 @@ func findImportComment(src *GoSource) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if importPath == "" {
-		return "", ErrorNeedImportPath
-	}
 	return importPath, nil
 }
 
@@ -216,6 +213,9 @@ func (src GoSource) Vendor() string {
 func (src GoSource) Project(importPath string) (*vcs.RepoRoot, error) {
 	if importPath == "" {
 		importPath = src.Package
+		if importPath == "" {
+			return nil, ErrorNeedImportPath
+		}
 	}
 
 	repoRoot, err := vcs.RepoRootForImportPath(importPath, false)
