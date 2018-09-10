@@ -131,14 +131,14 @@ type Reference struct {
 // DescribeProject attempts to identify the tag in the version control
 // system which corresponds to the project. Vendored files and files
 // whose names begin with "." are ignored.
-func DescribeProject(project *vcs.RepoRoot, root string) (*Reference, error) {
+func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Reference, error) {
 	wt, err := NewWorkingTree(project)
 	if err != nil {
 		return nil, err
 	}
 	defer wt.Close()
 
-	hashes, err := NewFileHashes(wt.VCS.Cmd, root)
+	hashes, err := NewFileHashes(wt.VCS.Cmd, root, src.excludes)
 	if err != nil {
 		return nil, err
 	}
@@ -198,6 +198,6 @@ func DescribeProject(project *vcs.RepoRoot, root string) (*Reference, error) {
 // project.
 func (src GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (*Reference, error) {
 	projectdir := filepath.Join(src.Vendor(), project.Root)
-	ref, err := DescribeProject(project, projectdir)
+	ref, err := src.DescribeProject(project, projectdir)
 	return ref, err
 }

@@ -20,9 +20,11 @@ Running
 ```
 $ backvendor -h
 backvendor: help requested
-usage: backvendor [-help] [-importpath=toplevel] [-deps=false] path
+usage: backvendor [OPTION]... PATH
   -deps
         show vendored dependencies (default true)
+  -exclude-from string
+        ignore glob patterns listed in provided file
   -help
         print help
   -importpath string
@@ -44,6 +46,16 @@ By default both the top-level project and its vendored dependencies are examined
 $ backvendor -deps=false -importpath github.com/example/name src
 ```
 
+If there are additional local files not expected to be part of the upstream version they can be excluded:
+```
+$ cat exclusions
+.git
+Dockerfile
+$ ls -d src/Dockerfile src/.git
+src/Dockerfile
+src/.git
+$ backvendor -exclude-from=exclusions src
+```
 
 Example output
 --------------

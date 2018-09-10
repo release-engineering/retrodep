@@ -35,6 +35,9 @@ type GoSource struct {
 
 	// repoRoots maps apparent import paths to actual repositories
 	repoRoots map[string]*vcs.RepoRoot
+
+	// excludes is a map of paths to ignore in this project
+	excludes map[string]bool
 }
 
 type Glide struct {
@@ -45,9 +48,24 @@ type Glide struct {
 	}
 }
 
-func NewGoSource(path string) *GoSource {
+func findExcludes(path string, globs []string) map[string]bool {
+	excludes := make(map[string]bool)
+	for _, glob := range globs {
+		matches, err := filepath.Glob(filepath.Join(path, glob))
+		if err != nil {
+			continue
+		}
+		for _, match := range matches {
+			excludes[match] = true
+		}
+	}
+	return excludes
+}
+
+func NewGoSource(path string, excludeGlobs ...string) *GoSource {
 	src := &GoSource{
-		Path: path,
+		Path:     path,
+		excludes: findExcludes(path, excludeGlobs),
 	}
 
 	if !readGlideConf(src) {
@@ -65,7 +83,11 @@ func NewGoSource(path string) *GoSource {
 // import path repository replacements. It returns true if it parsed
 // successfully.
 func readGlideConf(src *GoSource) bool {
-	f, err := os.Open(filepath.Join(src.Path, "glide.yaml"))
+	conf := filepath.Join(src.Path, "glide.yaml")
+	if src.excludes[conf] {
+		return false
+	}
+	f, err := os.Open(conf)
 	if err != nil {
 		return false
 	}
@@ -140,7 +162,7 @@ func importPathFromFilepath(pth string) (string, bool) {
 func findImportComment(src *GoSource) (string, error) {
 	var importPath string
 	search := func(path string, info os.FileInfo, err error) error {
-		if importPath != "" {
+		if src.excludes[path] || importPath != "" {
 			return filepath.SkipDir
 		}
 		if err != nil {
