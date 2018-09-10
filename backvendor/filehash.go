@@ -53,8 +53,9 @@ func hash(vcsCmd, relativePath, absPath string) (FileHash, error) {
 }
 
 // NewFileHashes returns a new FileHashes from a filesystem tree at root,
-// whose files belong to the version control system named in vcsCmd.
-func NewFileHashes(vcsCmd, root string) (FileHashes, error) {
+// whose files belong to the version control system named in vcsCmd. Keys in
+// the excludes map are filenames to ignore.
+func NewFileHashes(vcsCmd, root string, excludes map[string]bool) (FileHashes, error) {
 	hashes := make(FileHashes)
 	root = path.Clean(root)
 	var rootlen int
@@ -64,14 +65,17 @@ func NewFileHashes(vcsCmd, root string) (FileHashes, error) {
 	default:
 		rootlen = 1 + len(root)
 	}
-	ignore := make(map[string]struct{}) // set of pathnames to ignore
+	if excludes == nil {
+		excludes = make(map[string]bool)
+	}
 	walkfn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if _, ok := ignore[path]; ok {
-			// This pathname has been ignored due to .gitattributes
-			return nil
+		if excludes[path] {
+			// This pathname has been ignored, either by caller
+			// request or due to .gitattributes
+			return filepath.SkipDir
 		}
 		if info.IsDir() {
 			// Check for .gitattributes in this directory
@@ -93,7 +97,7 @@ func NewFileHashes(vcsCmd, root string) (FileHashes, error) {
 					if field == "export-subst" {
 						// Not expected to have matching hash
 						fn := filepath.Join(path, fields[0])
-						ignore[fn] = struct{}{}
+						excludes[fn] = true
 						break
 					}
 				}

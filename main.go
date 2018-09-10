@@ -16,6 +16,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -23,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/release-engineering/backvendor/backvendor"
 )
@@ -30,6 +32,7 @@ import (
 var helpFlag = flag.Bool("help", false, "print help")
 var importPath = flag.String("importpath", "", "top-level import path")
 var depsFlag = flag.Bool("deps", true, "show vendored dependencies")
+var excludeFrom = flag.String("exclude-from", "", "ignore directory entries matching globs in `exclusions`")
 
 func display(name string, ref *backvendor.Reference) {
 	fmt.Print(name)
@@ -57,7 +60,7 @@ func showTopLevel(src *backvendor.GoSource) {
 		log.Fatalf("%s: %s", src.Path, err)
 	}
 
-	project, err := backvendor.DescribeProject(main, src.Path)
+	project, err := src.DescribeProject(main, src.Path)
 	switch err {
 	case backvendor.ErrorVersionNotFound:
 		fmt.Printf("*%s ?\n", main.Root)
@@ -96,6 +99,25 @@ func showVendored(src *backvendor.GoSource) {
 	}
 }
 
+func readExcludeFile() []string {
+	if *excludeFrom == "" {
+		return nil
+	}
+
+	e, err := os.Open(*excludeFrom)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer e.Close()
+
+	excludes := make([]string, 0)
+	scanner := bufio.NewScanner(bufio.NewReader(e))
+	for scanner.Scan() {
+		excludes = append(excludes, strings.TrimSpace(scanner.Text()))
+	}
+	return excludes
+}
+
 func processArgs(args []string) *backvendor.GoSource {
 	progName := filepath.Base(args[0])
 	log.SetFlags(0) // For typical stderr output of a program.
@@ -107,7 +129,7 @@ func processArgs(args []string) *backvendor.GoSource {
 	cli.SetOutput(ioutil.Discard)
 	cli.Usage = func() {}
 
-	usageMsg := fmt.Sprintf("usage: %s [-help] [-importpath=toplevel] [-deps=false] path", progName)
+	usageMsg := fmt.Sprintf("usage: %s [OPTION]... PATH", progName)
 	usage := func(flaw string) {
 		log.Fatalf("%s: %s\n%s\n", progName, flaw, usageMsg)
 	}
@@ -130,7 +152,8 @@ func processArgs(args []string) *backvendor.GoSource {
 		usage(fmt.Sprintf("only one path allowed: %q", flag.Arg(1)))
 	}
 
-	return backvendor.NewGoSource(flag.Arg(0))
+	excludes := readExcludeFile()
+	return backvendor.NewGoSource(flag.Arg(0), excludes...)
 }
 
 func main() {
