@@ -37,7 +37,7 @@ type GoSource struct {
 	repoRoots map[string]*vcs.RepoRoot
 }
 
-type Glide struct {
+type glideConf struct {
 	Package string
 	Import  []struct {
 		Package string
@@ -73,7 +73,7 @@ func readGlideConf(src *GoSource) bool {
 
 	// There is a glide.yaml so inspect it
 	dec := yaml.NewDecoder(f)
-	var glide Glide
+	var glide glideConf
 	err = dec.Decode(&glide)
 	if err != nil {
 		return false
