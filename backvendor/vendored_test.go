@@ -16,7 +16,6 @@
 package backvendor
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -29,9 +28,6 @@ func TestVendoredProjects(t *testing.T) {
 	got, err := src.VendoredProjects()
 	if err != nil {
 		t.Fatal(err)
-	}
-	for each := range got {
-		fmt.Printf("%v\n", each)
 	}
 	matched := len(got) == len(expected)
 	if !matched {
