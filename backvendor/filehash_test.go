@@ -20,7 +20,7 @@ import (
 )
 
 func TestNewFileHashes(t *testing.T) {
-	hashes, err := NewFileHashes("git", "testdata/gosource")
+	hashes, err := NewFileHashes("git", "testdata/gosource", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
