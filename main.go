@@ -34,6 +34,16 @@ var importPath = flag.String("importpath", "", "top-level import path")
 var depsFlag = flag.Bool("deps", true, "show vendored dependencies")
 var excludeFrom = flag.String("exclude-from", "", "ignore directory entries matching globs in `exclusions`")
 
+var errorShown = false
+
+func displayUnknown(name string) {
+	fmt.Printf("*%s ?\n", name)
+	if !errorShown {
+		errorShown = true
+		fmt.Fprintln(os.Stderr, "error: not all versions identified")
+	}
+}
+
 func display(name string, ref *backvendor.Reference) {
 	fmt.Print(name)
 	if ref.Rev != "" {
@@ -63,7 +73,7 @@ func showTopLevel(src *backvendor.GoSource) {
 	project, err := src.DescribeProject(main, src.Path)
 	switch err {
 	case backvendor.ErrorVersionNotFound:
-		fmt.Printf("*%s ?\n", main.Root)
+		displayUnknown(main.Root)
 	case nil:
 		display("*"+main.Root, project)
 	default:
@@ -90,7 +100,7 @@ func showVendored(src *backvendor.GoSource) {
 		vp, err := src.DescribeVendoredProject(project)
 		switch err {
 		case backvendor.ErrorVersionNotFound:
-			fmt.Printf("%s ?\n", project.Root)
+			displayUnknown(project.Root)
 		case nil:
 			display(project.Root, vp)
 		default:
@@ -161,5 +171,9 @@ func main() {
 	showTopLevel(src)
 	if *depsFlag {
 		showVendored(src)
+	}
+
+	if errorShown {
+		os.Exit(1)
 	}
 }
