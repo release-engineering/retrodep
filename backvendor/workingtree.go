@@ -245,33 +245,16 @@ func (wt *WorkingTree) FileHashesAreSubset(fh *FileHashes, tag string) (bool, er
 		return false, ErrorUnknownVCS
 	}
 
-	buf, err := wt.run("ls-tree", "-r", tag)
+	tagFileHashes, err := wt.FileHashesFromRef(tag)
 	if err != nil {
-		if strings.HasPrefix(buf.String(), "fatal: Not a valid object name ") {
-			// This is a branch name, not a tag name
-			return false, nil
+		if err == ErrorInvalidRef {
+			err = nil
 		}
 
-		os.Stderr.Write(buf.Bytes())
 		return false, err
 	}
-	tagFileHashes := make(map[string]FileHash)
-	scanner := bufio.NewScanner(buf)
-	for scanner.Scan() {
-		line := scanner.Text()
-		fields := strings.Fields(line)
-		if len(fields) < 4 {
-			return false, fmt.Errorf("line not understood: %s", line)
-		}
-
-		var mode uint32
-		if _, err = fmt.Sscanf(fields[0], "%o", &mode); err != nil {
-			return false, err
-		}
-		tagFileHashes[fields[3]] = FileHash(fields[2])
-	}
 	for path, fileHash := range fh.hashes {
-		tagFileHash, ok := tagFileHashes[path]
+		tagFileHash, ok := tagFileHashes.hashes[path]
 		if !ok {
 			// File not present in tag
 			return false, nil
@@ -282,6 +265,45 @@ func (wt *WorkingTree) FileHashesAreSubset(fh *FileHashes, tag string) (bool, er
 		}
 	}
 	return true, nil
+}
+
+// FileHashesFromRef returns the file hashes from a particular tag or revision.
+func (wt *WorkingTree) FileHashesFromRef(ref string) (*FileHashes, error) {
+	if wt.VCS.Cmd != vcsGit {
+		return nil, ErrorUnknownVCS
+	}
+
+	buf, err := wt.run("ls-tree", "-r", ref)
+	if err != nil {
+		if strings.HasPrefix(buf.String(), "fatal: Not a valid object name ") {
+			// This is a branch name, not a tag name
+			return nil, ErrorInvalidRef
+		}
+
+		os.Stderr.Write(buf.Bytes())
+		return nil, err
+	}
+	fh := make(map[string]FileHash)
+	scanner := bufio.NewScanner(buf)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			return nil, fmt.Errorf("line not understood: %s", line)
+		}
+
+		var mode uint32
+		if _, err = fmt.Sscanf(fields[0], "%o", &mode); err != nil {
+			return nil, err
+		}
+		fh[fields[3]] = FileHash(fields[2])
+	}
+
+	return &FileHashes{
+		vcsCmd: vcsGit,
+		root:   wt.Source.Path,
+		hashes: fh,
+	}, nil
 }
 
 const quotedRE = `(?:"[^"]+"|` + "`[^`]+`)"

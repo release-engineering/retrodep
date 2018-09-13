@@ -31,3 +31,7 @@ var ErrorUnknownVCS = errors.New("unknown VCS")
 
 // ErrorNoFiles indicates there are no files to compare hashes of
 var ErrorNoFiles = errors.New("no files to hash")
+
+// ErrorInvalidRef indicates the ref is not a tag or a revision
+// (perhaps it is a branch name instead).
+var ErrorInvalidRef = errors.New("invalid ref")
