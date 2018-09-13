@@ -82,3 +82,27 @@ func TestNewFileHashesExclude(t *testing.T) {
 		}
 	}
 }
+
+func TestIsSubsetOf(t *testing.T) {
+	hashes, err := NewFileHashes("git", "testdata/gosource", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !hashes.IsSubsetOf(hashes) {
+		t.Fatalf("not subset of self")
+	}
+
+	other := &FileHashes{
+		vcsCmd: hashes.vcsCmd,
+		root:   hashes.root,
+		hashes: make(map[string]FileHash),
+	}
+	for k, v := range hashes.hashes {
+		other.hashes[k] = v
+	}
+	hashes.hashes["foo"] = FileHash("")
+	if hashes.IsSubsetOf(other) {
+		t.Fail()
+	}
+}

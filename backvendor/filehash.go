@@ -132,3 +132,20 @@ func NewFileHashes(vcsCmd, root string, excludes map[string]bool) (*FileHashes, 
 	}
 	return hashes, nil
 }
+
+// IsSubsetOf returns true if these file hashes are a subset of s.
+func (h *FileHashes) IsSubsetOf(s *FileHashes) bool {
+	for path, fileHash := range h.hashes {
+		sh, ok := s.hashes[path]
+		if !ok {
+			// File not present in tag
+			return false
+		}
+		if fileHash != sh {
+			// Hash does not match
+			return false
+		}
+	}
+
+	return true
+}
