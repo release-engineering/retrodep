@@ -100,11 +100,11 @@ func (src GoSource) VendoredProjects() (map[string]*vcs.RepoRoot, error) {
 
 func matchFromRefs(hashes *FileHashes, wt *WorkingTree, refs []string) (string, error) {
 	for _, ref := range refs {
-		match, err := wt.FileHashesAreSubset(hashes, ref)
+		tagHashes, err := wt.FileHashesFromRef(ref)
 		if err != nil {
 			return "", err
 		}
-		if match {
+		if hashes.IsSubsetOf(tagHashes) {
 			return ref, nil
 		}
 	}
