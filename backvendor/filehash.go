@@ -34,7 +34,7 @@ type FileHash string
 type FileHashes map[string]FileHash
 
 func hash(vcsCmd, relativePath, absPath string) (FileHash, error) {
-	if vcsCmd != vcsGit.Cmd {
+	if vcsCmd != vcsGit {
 		return FileHash(""), ErrorUnknownVCS
 	}
 

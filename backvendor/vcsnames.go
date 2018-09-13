@@ -15,23 +15,4 @@
 
 package backvendor
 
-import "golang.org/x/tools/go/vcs"
-
-// vcsGit describes how to use Git. (From golang.org/x/tools/go/vcs/vcs.go)
-var vcsGit = &vcs.Cmd{
-	Name:        "Git",
-	Cmd:         "git",
-	CreateCmd:   "clone {repo} {dir}",
-	DownloadCmd: "pull --ff-only",
-	TagCmd: []vcs.TagCmd{
-		{"show-ref", `(?:tags|origin)/(\S+)$`},
-	},
-	TagLookupCmd: []vcs.TagCmd{
-		{"show-ref tags/{tag} origin/{tag}", `((?:tags|origin)/\S+)$`},
-	},
-	TagSyncCmd:     "checkout {tag}",
-	TagSyncDefault: "checkout master",
-
-	Scheme:  []string{"git", "https", "http", "git+ssh"},
-	PingCmd: "ls-remote {scheme}://{repo}",
-}
+const vcsGit = "git"

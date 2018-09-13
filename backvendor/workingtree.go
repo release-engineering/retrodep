@@ -99,7 +99,7 @@ func (wt *WorkingTree) run(args ...string) (*bytes.Buffer, error) {
 
 // Revisions returns all revisions in the repository.
 func (wt *WorkingTree) Revisions() ([]string, error) {
-	if wt.VCS.Cmd != vcsGit.Cmd {
+	if wt.VCS.Cmd != vcsGit {
 		return nil, ErrorUnknownVCS
 	}
 
@@ -117,7 +117,7 @@ func (wt *WorkingTree) Revisions() ([]string, error) {
 }
 
 func (wt *WorkingTree) RevisionFromTag(tag string) (string, error) {
-	if wt.VCS.Cmd != vcsGit.Cmd {
+	if wt.VCS.Cmd != vcsGit {
 		return "", ErrorUnknownVCS
 	}
 
@@ -132,7 +132,7 @@ func (wt *WorkingTree) RevisionFromTag(tag string) (string, error) {
 
 func (wt *WorkingTree) timeFromRevision(rev string) (time.Time, error) {
 	var t time.Time
-	if wt.VCS.Cmd != vcsGit.Cmd {
+	if wt.VCS.Cmd != vcsGit {
 		return t, ErrorUnknownVCS
 	}
 
@@ -147,7 +147,7 @@ func (wt *WorkingTree) timeFromRevision(rev string) (time.Time, error) {
 
 // reachableTag returns the most recent reachable semver tag.
 func (wt *WorkingTree) reachableTag(rev string) (string, error) {
-	if wt.VCS.Cmd != vcsGit.Cmd {
+	if wt.VCS.Cmd != vcsGit {
 		return "", ErrorUnknownVCS
 	}
 
@@ -181,7 +181,7 @@ func (wt *WorkingTree) reachableTag(rev string) (string, error) {
 }
 
 func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
-	if wt.VCS.Cmd != vcsGit.Cmd {
+	if wt.VCS.Cmd != vcsGit {
 		return "", ErrorUnknownVCS
 	}
 
@@ -224,7 +224,7 @@ func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
 // those from a particular tag. It returns true if the provided files
 // and hashes are a subset of those found at the tag.
 func (wt *WorkingTree) FileHashesAreSubset(fh FileHashes, tag string) (bool, error) {
-	if wt.VCS.Cmd != vcsGit.Cmd {
+	if wt.VCS.Cmd != vcsGit {
 		return false, ErrorUnknownVCS
 	}
 

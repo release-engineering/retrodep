@@ -109,7 +109,7 @@ func readGlideConf(src *GoSource) bool {
 		}
 
 		repoRoots[imp.Package] = &vcs.RepoRoot{
-			VCS:  vcsGit,
+			VCS:  vcs.ByCmd(vcsGit),
 			Repo: imp.Repo,
 			Root: imp.Package,
 		}
