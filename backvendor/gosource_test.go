@@ -29,6 +29,20 @@ func TestDirs(t *testing.T) {
 	}
 }
 
+func TestGodepFalse(t *testing.T) {
+	src := NewGoSource("testdata/gosource")
+	if src.usesGodep {
+		t.Fatal("usesGodep")
+	}
+}
+
+func TestGodepTrue(t *testing.T) {
+	src := NewGoSource("testdata/godep")
+	if !src.usesGodep {
+		t.Fatal("usesGodep")
+	}
+}
+
 func TestImportPathFromFilepath(t *testing.T) {
 	tests := []struct {
 		filePath, importPath string

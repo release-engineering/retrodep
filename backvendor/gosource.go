@@ -38,6 +38,9 @@ type GoSource struct {
 
 	// excludes is a map of paths to ignore in this project
 	excludes map[string]bool
+
+	// usesGodep is true if Godeps/Godeps.json is present
+	usesGodep bool
 }
 
 type glideConf struct {
@@ -63,9 +66,11 @@ func findExcludes(path string, globs []string) map[string]bool {
 }
 
 func NewGoSource(path string, excludeGlobs ...string) *GoSource {
+	_, err := os.Stat(filepath.Join(path, "Godeps/Godeps.json"))
 	src := &GoSource{
-		Path:     path,
-		excludes: findExcludes(path, excludeGlobs),
+		Path:      path,
+		excludes:  findExcludes(path, excludeGlobs),
+		usesGodep: err == nil,
 	}
 
 	if !readGlideConf(src) {
