@@ -223,8 +223,8 @@ func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
 // FileHashesAreSubset compares a set of files and their hashes with
 // those from a particular tag. It returns true if the provided files
 // and hashes are a subset of those found at the tag.
-func (wt *WorkingTree) FileHashesAreSubset(fh FileHashes, tag string) (bool, error) {
-	if wt.VCS.Cmd != vcsGit {
+func (wt *WorkingTree) FileHashesAreSubset(fh *FileHashes, tag string) (bool, error) {
+	if wt.VCS.Cmd != vcsGit || wt.VCS.Cmd != fh.vcsCmd {
 		return false, ErrorUnknownVCS
 	}
 
@@ -238,7 +238,7 @@ func (wt *WorkingTree) FileHashesAreSubset(fh FileHashes, tag string) (bool, err
 		os.Stderr.Write(buf.Bytes())
 		return false, err
 	}
-	tagFileHashes := make(FileHashes)
+	tagFileHashes := make(map[string]FileHash)
 	scanner := bufio.NewScanner(buf)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -253,7 +253,7 @@ func (wt *WorkingTree) FileHashesAreSubset(fh FileHashes, tag string) (bool, err
 		}
 		tagFileHashes[fields[3]] = FileHash(fields[2])
 	}
-	for path, fileHash := range fh {
+	for path, fileHash := range fh.hashes {
 		tagFileHash, ok := tagFileHashes[path]
 		if !ok {
 			// File not present in tag

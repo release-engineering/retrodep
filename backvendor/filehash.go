@@ -31,7 +31,10 @@ type FileHash string
 
 // FileHashes is a map of paths, relative to the top-level of the
 // version control system, to their hashes.
-type FileHashes map[string]FileHash
+type FileHashes struct {
+	vcsCmd, root string
+	hashes       map[string]FileHash
+}
 
 func hash(vcsCmd, relativePath, absPath string) (FileHash, error) {
 	if vcsCmd != vcsGit {
@@ -55,8 +58,12 @@ func hash(vcsCmd, relativePath, absPath string) (FileHash, error) {
 // NewFileHashes returns a new FileHashes from a filesystem tree at root,
 // whose files belong to the version control system named in vcsCmd. Keys in
 // the excludes map are filenames to ignore.
-func NewFileHashes(vcsCmd, root string, excludes map[string]bool) (FileHashes, error) {
-	hashes := make(FileHashes)
+func NewFileHashes(vcsCmd, root string, excludes map[string]bool) (*FileHashes, error) {
+	hashes := &FileHashes{
+		vcsCmd: vcsCmd,
+		root:   root,
+		hashes: make(map[string]FileHash),
+	}
 	root = path.Clean(root)
 	var rootlen int
 	switch {
@@ -116,7 +123,7 @@ func NewFileHashes(vcsCmd, root string, excludes map[string]bool) (FileHashes, e
 		if err != nil {
 			return err
 		}
-		hashes[relativePath] = fileHash
+		hashes.hashes[relativePath] = fileHash
 		return nil
 	}
 	err := filepath.Walk(root, walkfn)

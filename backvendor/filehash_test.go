@@ -27,6 +27,12 @@ func TestNewFileHashes(t *testing.T) {
 	if hashes == nil {
 		t.Fatal("NewFileHashes returned nil map")
 	}
+	if hashes.root != "testdata/gosource" {
+		t.Fatalf("Incorrect hashes.root (%s)", hashes.root)
+	}
+	if hashes.vcsCmd != "git" {
+		t.Fatalf("Incorrect hashes.vcsCmd (%s)", hashes.vcsCmd)
+	}
 	emptyhash := FileHash("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
 	expected := map[string]FileHash{
 		"ignored.go":                                 emptyhash,
@@ -34,11 +40,11 @@ func TestNewFileHashes(t *testing.T) {
 		"vendor/github.com/eggs/ham/ham.go":          emptyhash,
 		"vendor/github.com/eggs/ham/spam/ignored.go": emptyhash,
 	}
-	if len(hashes) != len(expected) {
+	if len(hashes.hashes) != len(expected) {
 		t.Fatalf("len(hashes[%v]) != %d", hashes, len(expected))
 	}
 	for key, value := range expected {
-		got, ok := hashes[key]
+		got, ok := hashes.hashes[key]
 		if !ok {
 			t.Errorf("%s missing", key)
 			continue
@@ -62,11 +68,11 @@ func TestNewFileHashesExclude(t *testing.T) {
 		"vendor/github.com/eggs/ham/ham.go":          emptyhash,
 		"vendor/github.com/eggs/ham/spam/ignored.go": emptyhash,
 	}
-	if len(hashes) != len(expected) {
+	if len(hashes.hashes) != len(expected) {
 		t.Fatalf("len(hashes[%v]) != %d", hashes, len(expected))
 	}
 	for key, value := range expected {
-		got, ok := hashes[key]
+		got, ok := hashes.hashes[key]
 		if !ok {
 			t.Errorf("%s missing", key)
 			continue

@@ -98,7 +98,7 @@ func (src GoSource) VendoredProjects() (map[string]*vcs.RepoRoot, error) {
 	return search.vendored, nil
 }
 
-func matchFromRefs(hashes FileHashes, wt *WorkingTree, refs []string) (string, error) {
+func matchFromRefs(hashes *FileHashes, wt *WorkingTree, refs []string) (string, error) {
 	for _, ref := range refs {
 		match, err := wt.FileHashesAreSubset(hashes, ref)
 		if err != nil {
@@ -143,15 +143,15 @@ func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Refere
 		return nil, err
 	}
 
-	for path, _ := range hashes {
+	for path, _ := range hashes.hashes {
 		if strings.HasPrefix(path, "vendor/") ||
 			// Ignore dot files (e.g. .git)
 			strings.HasPrefix(path, ".") {
-			delete(hashes, path)
+			delete(hashes.hashes, path)
 		}
 	}
 
-	if len(hashes) == 0 {
+	if len(hashes.hashes) == 0 {
 		return nil, ErrorNoFiles
 	}
 
