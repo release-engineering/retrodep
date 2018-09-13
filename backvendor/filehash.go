@@ -36,7 +36,7 @@ type FileHashes struct {
 	hashes       map[string]FileHash
 }
 
-func hash(vcsCmd, relativePath, absPath string) (FileHash, error) {
+func hashFile(vcsCmd, relativePath, absPath string) (FileHash, error) {
 	if vcsCmd != vcsGit {
 		return FileHash(""), ErrorUnknownVCS
 	}
@@ -119,7 +119,7 @@ func NewFileHashes(vcsCmd, root string, excludes map[string]bool) (*FileHashes, 
 			return nil
 		}
 		relativePath := path[rootlen:]
-		fileHash, err := hash(vcsCmd, relativePath, path)
+		fileHash, err := hashFile(vcsCmd, relativePath, path)
 		if err != nil {
 			return err
 		}
