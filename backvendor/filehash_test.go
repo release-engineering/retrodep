@@ -48,3 +48,31 @@ func TestNewFileHashes(t *testing.T) {
 		}
 	}
 }
+
+func TestNewFileHashesExclude(t *testing.T) {
+	excludes := make(map[string]bool)
+	excludes["testdata/gosource/ignored.go"] = true
+	hashes, err := NewFileHashes("git", "testdata/gosource", excludes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	emptyhash := FileHash("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+	expected := map[string]FileHash{
+		"vendor/github.com/foo/bar/bar.go":           emptyhash,
+		"vendor/github.com/eggs/ham/ham.go":          emptyhash,
+		"vendor/github.com/eggs/ham/spam/ignored.go": emptyhash,
+	}
+	if len(hashes) != len(expected) {
+		t.Fatalf("len(hashes[%v]) != %d", hashes, len(expected))
+	}
+	for key, value := range expected {
+		got, ok := hashes[key]
+		if !ok {
+			t.Errorf("%s missing", key)
+			continue
+		}
+		if got != value {
+			t.Errorf("%s: wrong hash (%s != %s)", key, got, value)
+		}
+	}
+}

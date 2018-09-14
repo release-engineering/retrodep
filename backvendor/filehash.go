@@ -75,7 +75,10 @@ func NewFileHashes(vcsCmd, root string, excludes map[string]bool) (FileHashes, e
 		if excludes[path] {
 			// This pathname has been ignored, either by caller
 			// request or due to .gitattributes
-			return filepath.SkipDir
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 		if info.IsDir() {
 			// Check for .gitattributes in this directory

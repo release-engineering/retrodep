@@ -163,7 +163,10 @@ func findImportComment(src *GoSource) (string, error) {
 	var importPath string
 	search := func(path string, info os.FileInfo, err error) error {
 		if src.excludes[path] || importPath != "" {
-			return filepath.SkipDir
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		}
 		if err != nil {
 			return err
@@ -176,6 +179,7 @@ func findImportComment(src *GoSource) (string, error) {
 			if info.Name() == "vendor" || info.Name() == "testdata" {
 				return filepath.SkipDir
 			}
+			return nil
 		}
 		if !strings.HasSuffix(info.Name(), ".go") {
 			return nil
