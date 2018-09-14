@@ -20,19 +20,22 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/op/go-logging"
 	"github.com/release-engineering/backvendor/backvendor"
 )
+
+var log = logging.MustGetLogger("backvendor")
 
 var helpFlag = flag.Bool("help", false, "print help")
 var importPath = flag.String("importpath", "", "top-level import path")
 var depsFlag = flag.Bool("deps", true, "show vendored dependencies")
 var excludeFrom = flag.String("exclude-from", "", "ignore directory entries matching globs in `exclusions`")
+var debugFlag = flag.Bool("debug", false, "show debugging output")
 
 var errorShown = false
 
@@ -62,7 +65,7 @@ func showTopLevel(src *backvendor.GoSource) {
 	main, err := src.Project(*importPath)
 	if err != nil {
 		if err == backvendor.ErrorNeedImportPath {
-			log.Printf("%s: %s", src.Path, err)
+			log.Errorf("%s: %s", src.Path, err)
 			fmt.Fprintln(os.Stderr,
 				"Provide import path with -importpath")
 			os.Exit(1)
@@ -130,7 +133,6 @@ func readExcludeFile() []string {
 
 func processArgs(args []string) *backvendor.GoSource {
 	progName := filepath.Base(args[0])
-	log.SetFlags(0) // For typical stderr output of a program.
 
 	// Stop the default behaviour of printing errors and exiting.
 	// Instead, silence the printing and return them.
@@ -161,6 +163,12 @@ func processArgs(args []string) *backvendor.GoSource {
 	if narg != 1 {
 		usage(fmt.Sprintf("only one path allowed: %q", flag.Arg(1)))
 	}
+
+	level := logging.INFO
+	if *debugFlag {
+		level = logging.DEBUG
+	}
+	logging.SetLevel(level, "backvendor")
 
 	excludes := readExcludeFile()
 	return backvendor.NewGoSource(flag.Arg(0), excludes...)

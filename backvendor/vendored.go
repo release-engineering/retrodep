@@ -157,6 +157,7 @@ func matchFromRefs(strip bool, hashes *FileHashes, wt *WorkingTree, refs []strin
 
 Refs:
 	for _, ref := range refs {
+		log.Debugf("%s: trying match", ref)
 		tagHashes, err := wt.FileHashesFromRef(ref)
 		if err != nil {
 			if err == ErrorInvalidRef {

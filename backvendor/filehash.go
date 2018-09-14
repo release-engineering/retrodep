@@ -139,10 +139,12 @@ func (h *FileHashes) IsSubsetOf(s *FileHashes) bool {
 		sh, ok := s.hashes[path]
 		if !ok {
 			// File not present in tag
+			log.Debugf("%s: not present", path)
 			return false
 		}
 		if fileHash != sh {
 			// Hash does not match
+			log.Debugf("%s: hash mismatch", path)
 			return false
 		}
 	}

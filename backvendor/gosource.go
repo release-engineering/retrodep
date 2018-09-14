@@ -21,9 +21,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/op/go-logging"
 	"golang.org/x/tools/go/vcs"
 	"gopkg.in/yaml.v2"
 )
+
+var log = logging.MustGetLogger("backvendor")
 
 // GoSource represents a filesystem tree containing Go source code.
 type GoSource struct {

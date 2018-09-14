@@ -21,6 +21,8 @@ Running
 $ backvendor -h
 backvendor: help requested
 usage: backvendor [OPTION]... PATH
+  -debug
+        show debugging output
   -deps
         show vendored dependencies (default true)
   -exclude-from string
