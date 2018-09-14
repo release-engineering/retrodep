@@ -134,6 +134,19 @@ func (wt *WorkingTree) RevisionFromTag(tag string) (string, error) {
 	return rev, nil
 }
 
+// RevSync updates the working tree to reflect the tag or revision ref.
+func (wt *WorkingTree) RevSync(ref string) error {
+	if wt.VCS.Cmd != vcsGit {
+		return wt.VCS.TagSync(wt.Source.Path, ref)
+	}
+
+	buf, err := wt.run("checkout", ref)
+	if err != nil {
+		os.Stderr.Write(buf.Bytes())
+	}
+	return err
+}
+
 func (wt *WorkingTree) timeFromRevision(rev string) (time.Time, error) {
 	var t time.Time
 	if wt.VCS.Cmd != vcsGit {
