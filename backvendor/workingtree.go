@@ -336,10 +336,6 @@ func (wt *WorkingTree) StripImportComment(path string, w io.Writer) (bool, error
 	path = filepath.Join(wt.Source.Path, path)
 	r, err := os.Open(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			err = nil
-		}
-
 		return false, errors.Wrap(err, "StripImportComment")
 	}
 	defer r.Close()
