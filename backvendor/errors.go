@@ -28,3 +28,6 @@ var ErrorVersionNotFound = errors.New("version not found")
 // ErrorUnknownVCS indicates the upstream version control system is not one of
 // those for which support is implemented in backvendor.
 var ErrorUnknownVCS = errors.New("unknown VCS")
+
+// ErrorNoFiles indicates there are no files to compare hashes of
+var ErrorNoFiles = errors.New("no files to hash")

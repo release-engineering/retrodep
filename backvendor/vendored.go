@@ -151,6 +151,10 @@ func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Refere
 		}
 	}
 
+	if len(hashes) == 0 {
+		return nil, ErrorNoFiles
+	}
+
 	// First try matching against tags for semantic versions
 	tags, err := wt.VersionTags()
 	if err != nil {
