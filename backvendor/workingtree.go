@@ -324,10 +324,15 @@ func removeImportComment(line []byte) []byte {
 }
 
 // StripImportComment removes import comments from package
-// declarations in the same way godep does, writing the result to
-// w. It returns a boolean indicating whether an import comment was
-// removed.
+// declarations in the same way godep does, writing the result (if
+// changed) to w. It returns a boolean indicating whether an import
+// comment was removed.
+//
+// The file content may be written to w even if no change was made.
 func (wt *WorkingTree) StripImportComment(path string, w io.Writer) (bool, error) {
+	if !strings.HasSuffix(path, ".go") {
+		return false, nil
+	}
 	path = filepath.Join(wt.Source.Path, path)
 	r, err := os.Open(path)
 	if err != nil {

@@ -70,4 +70,13 @@ func TestStripImportCommentNewline(t *testing.T) {
 	if changed {
 		t.Fatalf("changed is incorrect")
 	}
+
+	w.Reset()
+	changed, err = wt.StripImportComment("nonl.txt", w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if changed {
+		t.Fatalf("changed is incorrect")
+	}
 }
