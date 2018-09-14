@@ -170,7 +170,7 @@ func (wt *WorkingTree) reachableTag(rev string) (string, error) {
 
 	var tag string
 	for _, match := range []string{"v[0-9]*", "[0-9]*"} {
-		buf, err := wt.run("describe", "--match="+match, rev)
+		buf, err := wt.run("describe", "--tags", "--match="+match, rev)
 		output := strings.TrimSpace(buf.String())
 		if err == nil {
 			tag = output
