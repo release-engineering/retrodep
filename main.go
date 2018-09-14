@@ -37,7 +37,7 @@ var excludeFrom = flag.String("exclude-from", "", "ignore directory entries matc
 var errorShown = false
 
 func displayUnknown(name string) {
-	fmt.Printf("*%s ?\n", name)
+	fmt.Printf("%s ?\n", name)
 	if !errorShown {
 		errorShown = true
 		fmt.Fprintln(os.Stderr, "error: not all versions identified")
@@ -73,7 +73,7 @@ func showTopLevel(src *backvendor.GoSource) {
 	project, err := src.DescribeProject(main, src.Path)
 	switch err {
 	case backvendor.ErrorVersionNotFound:
-		displayUnknown(main.Root)
+		displayUnknown("*" + main.Root)
 	case nil:
 		display("*"+main.Root, project)
 	default:
