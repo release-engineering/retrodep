@@ -16,10 +16,13 @@
 package backvendor
 
 import (
+	"bytes"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/pkg/errors"
 	"golang.org/x/tools/go/vcs"
 )
 
@@ -98,14 +101,88 @@ func (src GoSource) VendoredProjects() (map[string]*vcs.RepoRoot, error) {
 	return search.vendored, nil
 }
 
-func matchFromRefs(hashes *FileHashes, wt *WorkingTree, refs []string) (string, error) {
+func updateHashesAfterStrip(hashes *FileHashes, wt *WorkingTree, ref string, paths []string) (bool, error) {
+	// Update working tree to match the ref
+	err := wt.RevSync(ref)
+	if err != nil {
+		return false, errors.Wrapf(err, "RevSync to %s", ref)
+	}
+
+	anyChanged := false
+	for _, path := range paths {
+		w := bytes.NewBuffer(nil)
+		changed, err := wt.StripImportComment(path, w)
+		if err != nil {
+			return false, err
+		}
+		if !changed {
+			continue
+		}
+
+		anyChanged = true
+
+		// Write the altered content out to a file
+		f, err := ioutil.TempFile("", "backvendor-strip.")
+		if err != nil {
+			return true, errors.Wrap(err, "updating hash")
+		}
+		defer f.Close()
+		defer os.Remove(f.Name())
+		_, err = w.WriteTo(f)
+		if err != nil {
+			return true, errors.Wrap(err, "updating hash")
+		}
+		if err := f.Close(); err != nil {
+			return true, errors.Wrap(err, "updating hash")
+		}
+
+		// Re-hash the altered file
+		h, err := hashFile(hashes.vcsCmd, path, f.Name())
+		if err != nil {
+			return false, err
+		}
+		hashes.hashes[path] = h
+	}
+
+	return anyChanged, nil
+}
+
+func matchFromRefs(strip bool, hashes *FileHashes, wt *WorkingTree, refs []string) (string, error) {
+	var paths []string
+	if strip {
+		for hash, _ := range hashes.hashes {
+			paths = append(paths, hash)
+		}
+	}
+
+Refs:
 	for _, ref := range refs {
 		tagHashes, err := wt.FileHashesFromRef(ref)
 		if err != nil {
+			if err == ErrorInvalidRef {
+				continue
+			}
 			return "", err
 		}
 		if hashes.IsSubsetOf(tagHashes) {
 			return ref, nil
+		}
+		if strip {
+			for _, path := range paths {
+				if _, ok := tagHashes.hashes[path]; !ok {
+					// File missing from revision
+					continue Refs
+				}
+			}
+
+			changed, err := updateHashesAfterStrip(tagHashes, wt, ref, paths)
+			if err != nil {
+				return "", err
+			}
+
+			if changed && hashes.IsSubsetOf(tagHashes) {
+				return ref, nil
+			}
 		}
 	}
 
@@ -161,8 +238,15 @@ func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Refere
 		return nil, err
 	}
 
-	match, err := matchFromRefs(hashes, wt, tags)
-	if (err != nil && err != ErrorVersionNotFound) || match != "" {
+	// If godep is in use, strip import comments from the
+	// project's vendored files (but not files from the top-level
+	// project).
+	strip := src.usesGodep && root != src.Path
+	match, err := matchFromRefs(strip, hashes, wt, tags)
+	if err != nil && err != ErrorVersionNotFound {
+		return nil, err
+	}
+	if err != ErrorVersionNotFound {
 		rev, err := wt.RevisionFromTag(match)
 		if err != nil {
 			return nil, err
@@ -181,7 +265,7 @@ func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Refere
 		return nil, err
 	}
 
-	rev, err := matchFromRefs(hashes, wt, revs)
+	rev, err := matchFromRefs(strip, hashes, wt, revs)
 	if err != nil {
 		return nil, err
 	}
