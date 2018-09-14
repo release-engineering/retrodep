@@ -19,14 +19,18 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/pkg/errors"
 	"golang.org/x/tools/go/vcs"
 )
 
@@ -265,4 +269,70 @@ func (wt *WorkingTree) FileHashesAreSubset(fh *FileHashes, tag string) (bool, er
 		}
 	}
 	return true, nil
+}
+
+const quotedRE = `(?:"[^"]+"|` + "`[^`]+`)"
+const importRE = `\s*import\s+` + quotedRE + `\s*`
+
+var importCommentRE = regexp.MustCompile(
+	`^(package\s+\w+)\s+(?://` + importRE + `$|/\*` + importRE + `\*/)(.*)`,
+)
+
+func removeImportComment(line []byte) []byte {
+	if matches := importCommentRE.FindSubmatch(line); matches != nil {
+		return append(
+			matches[1],    // package statement
+			matches[2]...) // comments after first closing "*/"
+	}
+
+	return nil
+}
+
+// StripImportComment removes import comments from package
+// declarations in the same way godep does, writing the result to
+// w. It returns a boolean indicating whether an import comment was
+// removed.
+func (wt *WorkingTree) StripImportComment(path string, w io.Writer) (bool, error) {
+	path = filepath.Join(wt.Source.Path, path)
+	r, err := os.Open(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+		}
+
+		return false, errors.Wrap(err, "StripImportComment")
+	}
+	defer r.Close()
+
+	b := bufio.NewReader(r)
+	changed := false
+	eof := false
+	for !eof {
+		line, err := b.ReadBytes('\n')
+		if err != nil {
+			if err == io.EOF {
+				eof = true
+			} else {
+				return false, errors.Wrap(err, "StripImportComment")
+			}
+		}
+		if len(line) > 0 {
+			nonl := bytes.TrimRight(line, "\n")
+			if len(nonl) == len(line) {
+				// There was no newline but we'll add one
+				changed = true
+			}
+			repl := removeImportComment(nonl)
+			if repl != nil {
+				nonl = repl
+				changed = true
+			}
+
+			if _, err := w.Write(append(nonl, '\n')); err != nil {
+				return false, errors.Wrap(err, "StripImportComment")
+			}
+		}
+	}
+
+	return changed, nil
 }
