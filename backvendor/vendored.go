@@ -165,7 +165,30 @@ func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, refs []string
 		}
 	}
 
-Refs:
+	matchFromRef := func(th *FileHashes, ref string) (bool, error) {
+		if hashes.IsSubsetOf(th) {
+			return true, nil
+		}
+
+		if !strip {
+			return false, nil
+		}
+
+		for _, path := range paths {
+			if _, ok := th.hashes[path]; !ok {
+				// File missing from revision
+				return false, nil
+			}
+		}
+
+		changed, err := updateHashesAfterStrip(th, wt, ref, paths)
+		if err != nil {
+			return false, err
+		}
+
+		return changed && hashes.IsSubsetOf(th), nil
+	}
+
 	for _, ref := range refs {
 		log.Debugf("%s: trying match", ref)
 		tagHashes, err := wt.FileHashesFromRef(ref)
@@ -175,25 +198,12 @@ Refs:
 			}
 			return "", err
 		}
-		if hashes.IsSubsetOf(tagHashes) {
-			return ref, nil
+		ok, err := matchFromRef(tagHashes, ref)
+		if err != nil {
+			return "", err
 		}
-		if strip {
-			for _, path := range paths {
-				if _, ok := tagHashes.hashes[path]; !ok {
-					// File missing from revision
-					continue Refs
-				}
-			}
-
-			changed, err := updateHashesAfterStrip(tagHashes, wt, ref, paths)
-			if err != nil {
-				return "", err
-			}
-
-			if changed && hashes.IsSubsetOf(tagHashes) {
-				return ref, nil
-			}
+		if ok {
+			return ref, nil
 		}
 	}
 
