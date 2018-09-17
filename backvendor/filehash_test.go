@@ -56,8 +56,8 @@ func TestNewFileHashes(t *testing.T) {
 }
 
 func TestNewFileHashesExclude(t *testing.T) {
-	excludes := make(map[string]bool)
-	excludes["testdata/gosource/ignored.go"] = true
+	excludes := make(map[string]struct{})
+	excludes["testdata/gosource/ignored.go"] = struct{}{}
 	hashes, err := NewFileHashes("git", "testdata/gosource", excludes)
 	if err != nil {
 		t.Fatal(err)

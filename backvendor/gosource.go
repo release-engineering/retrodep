@@ -37,7 +37,7 @@ type GoSource struct {
 	repoRoots map[string]*vcs.RepoRoot
 
 	// excludes is a map of paths to ignore in this project
-	excludes map[string]bool
+	excludes map[string]struct{}
 
 	// usesGodep is true if Godeps/Godeps.json is present
 	usesGodep bool
@@ -51,15 +51,15 @@ type glideConf struct {
 	}
 }
 
-func findExcludes(path string, globs []string) map[string]bool {
-	excludes := make(map[string]bool)
+func findExcludes(path string, globs []string) map[string]struct{} {
+	excludes := make(map[string]struct{})
 	for _, glob := range globs {
 		matches, err := filepath.Glob(filepath.Join(path, glob))
 		if err != nil {
 			continue
 		}
 		for _, match := range matches {
-			excludes[match] = true
+			excludes[match] = struct{}{}
 		}
 	}
 	return excludes
@@ -89,7 +89,7 @@ func NewGoSource(path string, excludeGlobs ...string) *GoSource {
 // successfully.
 func readGlideConf(src *GoSource) bool {
 	conf := filepath.Join(src.Path, "glide.yaml")
-	if src.excludes[conf] {
+	if _, skip := src.excludes[conf]; skip {
 		return false
 	}
 	f, err := os.Open(conf)
@@ -167,7 +167,8 @@ func importPathFromFilepath(pth string) (string, bool) {
 func findImportComment(src *GoSource) (string, error) {
 	var importPath string
 	search := func(path string, info os.FileInfo, err error) error {
-		if src.excludes[path] || importPath != "" {
+		_, skip := src.excludes[path]
+		if skip || importPath != "" {
 			if info.IsDir() {
 				return filepath.SkipDir
 			}
