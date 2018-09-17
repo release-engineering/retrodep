@@ -54,10 +54,10 @@ type glideConf struct {
 	}
 }
 
-func findExcludes(path string, globs []string) map[string]struct{} {
+func findExcludes(pth string, globs []string) map[string]struct{} {
 	excludes := make(map[string]struct{})
 	for _, glob := range globs {
-		matches, err := filepath.Glob(filepath.Join(path, glob))
+		matches, err := filepath.Glob(filepath.Join(pth, glob))
 		if err != nil {
 			continue
 		}
@@ -68,18 +68,18 @@ func findExcludes(path string, globs []string) map[string]struct{} {
 	return excludes
 }
 
-func NewGoSource(path string, excludeGlobs ...string) *GoSource {
-	_, err := os.Stat(filepath.Join(path, "Godeps/Godeps.json"))
+func NewGoSource(pth string, excludeGlobs ...string) *GoSource {
+	_, err := os.Stat(filepath.Join(pth, "Godeps/Godeps.json"))
 	src := &GoSource{
-		Path:      path,
-		excludes:  findExcludes(path, excludeGlobs),
+		Path:      pth,
+		excludes:  findExcludes(pth, excludeGlobs),
 		usesGodep: err == nil,
 	}
 
 	if !readGlideConf(src) {
 		if importPath, err := findImportComment(src); err == nil {
 			src.Package = importPath
-		} else if importPath, ok := importPathFromFilepath(path); ok {
+		} else if importPath, ok := importPathFromFilepath(pth); ok {
 			src.Package = importPath
 		}
 	}
@@ -169,8 +169,8 @@ func importPathFromFilepath(pth string) (string, bool) {
 
 func findImportComment(src *GoSource) (string, error) {
 	var importPath string
-	search := func(path string, info os.FileInfo, err error) error {
-		_, skip := src.excludes[path]
+	search := func(pth string, info os.FileInfo, err error) error {
+		_, skip := src.excludes[pth]
 		if skip || importPath != "" {
 			if info.IsDir() {
 				return filepath.SkipDir
@@ -193,7 +193,7 @@ func findImportComment(src *GoSource) (string, error) {
 		if !strings.HasSuffix(info.Name(), ".go") {
 			return nil
 		}
-		r, err := os.Open(path)
+		r, err := os.Open(pth)
 		if err != nil {
 			return err
 		}
@@ -216,15 +216,15 @@ func findImportComment(src *GoSource) (string, error) {
 			if fields[3] != "import" {
 				return nil
 			}
-			path := fields[4]
-			if len(path) < 3 {
+			pth := fields[4]
+			if len(pth) < 3 {
 				return nil
 			}
-			if path[0] != '"' ||
-				path[len(path)-1] != '"' {
+			if pth[0] != '"' ||
+				pth[len(pth)-1] != '"' {
 				return nil
 			}
-			importPath = path[1 : len(path)-1]
+			importPath = pth[1 : len(pth)-1]
 			break
 		}
 		return nil
@@ -259,21 +259,21 @@ func (src GoSource) Project(importPath string) (*vcs.RepoRoot, error) {
 
 func (src GoSource) RepoRootForImportPath(importPath string) (*vcs.RepoRoot, error) {
 	// First look up replacements
-	path := importPath
+	pth := importPath
 	for {
-		repl, ok := src.repoRoots[path]
+		repl, ok := src.repoRoots[pth]
 		if ok {
 			// Found a replacement repo
 			return repl, nil
 		}
 
-		slash := strings.LastIndex(path, "/")
+		slash := strings.LastIndex(pth, "/")
 		if slash < 1 {
 			break
 		}
 
 		// Try shorter import path
-		path = path[:slash]
+		pth = pth[:slash]
 	}
 
 	// No replacement found, use the import path as-is
