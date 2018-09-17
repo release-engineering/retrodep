@@ -215,15 +215,20 @@ func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Refere
 	}
 	defer wt.Close()
 
-	hashes, err := NewFileHashes(wt.VCS.Cmd, root, src.excludes)
+	excludes := make(map[string]struct{})
+	for key := range src.excludes {
+		excludes[key] = struct{}{}
+	}
+	// Ignore vendor directory
+	excludes[filepath.Join(root, "vendor")] = struct{}{}
+	hashes, err := NewFileHashes(wt.VCS.Cmd, root, excludes)
 	if err != nil {
 		return nil, err
 	}
 
 	for path, _ := range hashes.hashes {
-		if strings.HasPrefix(path, "vendor/") ||
-			// Ignore dot files (e.g. .git)
-			strings.HasPrefix(path, ".") {
+		// Ignore dot files (e.g. .git)
+		if strings.HasPrefix(path, ".") {
 			delete(hashes.hashes, path)
 		}
 	}
