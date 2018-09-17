@@ -23,11 +23,13 @@ import (
 	"strings"
 
 	"github.com/op/go-logging"
+	"github.com/pkg/errors"
 	"golang.org/x/tools/go/vcs"
 	"gopkg.in/yaml.v2"
 )
 
 var log = logging.MustGetLogger("backvendor")
+var errorNoImportPathComment = errors.New("no import path comment")
 
 // GoSource represents a filesystem tree containing Go source code.
 type GoSource struct {
@@ -235,7 +237,10 @@ func findImportComment(src *GoSource) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return importPath, nil
+	if importPath == "" {
+		err = errorNoImportPathComment
+	}
+	return importPath, err
 }
 
 // Vendor returns the path to the vendored source code.
