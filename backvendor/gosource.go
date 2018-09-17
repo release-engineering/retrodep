@@ -18,6 +18,7 @@ package backvendor // import "github.com/release-engineering/backvendor/backvend
 import (
 	"bufio"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -267,15 +268,26 @@ func (src GoSource) RepoRootForImportPath(importPath string) (*vcs.RepoRoot, err
 			return repl, nil
 		}
 
-		slash := strings.LastIndex(pth, "/")
-		if slash < 1 {
+		// Try shorter import path
+		pth = path.Dir(pth)
+		if len(pth) == 1 {
 			break
 		}
-
-		// Try shorter import path
-		pth = pth[:slash]
 	}
 
-	// No replacement found, use the import path as-is
-	return vcs.RepoRootForImportPath(importPath, false)
+	// No replacement found, use the import pth as-is
+	r, err := vcs.RepoRootForImportPath(importPath, false)
+	if err != nil && strings.ContainsRune(importPath, '_') {
+		// gopkg.in gives bad responses for paths like
+		// gopkg.in/foo/bar.v2/_examples/chat1
+		// because of the underscore. Remove it and try again.
+		u := strings.Index(importPath, "_")
+		importPath = path.Dir(importPath[:u])
+		r, nerr := vcs.RepoRootForImportPath(importPath, false)
+		if nerr == nil {
+			return r, nil
+		}
+	}
+
+	return r, err
 }
