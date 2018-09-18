@@ -72,14 +72,20 @@ func NewFileHashes(vcsCmd, root string, excludes map[string]struct{}) (*FileHash
 	default:
 		rootlen = 1 + len(root)
 	}
-	if excludes == nil {
-		excludes = make(map[string]struct{})
+
+	// Make a local copy of excludes we can safely modify
+	excl := make(map[string]struct{})
+	if excludes != nil {
+		for k, v := range excludes {
+			excl[k] = v
+		}
 	}
+
 	walkfn := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if _, skip := excludes[path]; skip {
+		if _, skip := excl[path]; skip {
 			// This pathname has been ignored, either by caller
 			// request or due to .gitattributes
 			if info.IsDir() {
@@ -107,7 +113,7 @@ func NewFileHashes(vcsCmd, root string, excludes map[string]struct{}) (*FileHash
 					if field == "export-subst" {
 						// Not expected to have matching hash
 						fn := filepath.Join(path, fields[0])
-						excludes[fn] = struct{}{}
+						excl[fn] = struct{}{}
 						break
 					}
 				}
