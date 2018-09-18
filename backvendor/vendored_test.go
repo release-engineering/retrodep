@@ -20,7 +20,10 @@ import (
 )
 
 func TestVendoredProjects(t *testing.T) {
-	src := NewGoSource("testdata/gosource")
+	src, err := NewGoSource("testdata/gosource")
+	if err != nil {
+		t.Fatal(err)
+	}
 	expected := []string{
 		"github.com/eggs/ham",
 		"github.com/foo/bar",

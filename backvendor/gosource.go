@@ -57,25 +57,29 @@ type glideConf struct {
 	}
 }
 
-func findExcludes(pth string, globs []string) map[string]struct{} {
+func findExcludes(pth string, globs []string) (map[string]struct{}, error) {
 	excludes := make(map[string]struct{})
 	for _, glob := range globs {
 		matches, err := filepath.Glob(filepath.Join(pth, glob))
 		if err != nil {
-			continue
+			return nil, err
 		}
 		for _, match := range matches {
 			excludes[match] = struct{}{}
 		}
 	}
-	return excludes
+	return excludes, nil
 }
 
-func NewGoSource(pth string, excludeGlobs ...string) *GoSource {
-	_, err := os.Stat(filepath.Join(pth, "Godeps", "Godeps.json"))
+func NewGoSource(pth string, excludeGlobs ...string) (*GoSource, error) {
+	excludes, err := findExcludes(pth, excludeGlobs)
+	if err != nil {
+		return nil, err
+	}
+	_, err = os.Stat(filepath.Join(pth, "Godeps", "Godeps.json"))
 	src := &GoSource{
 		Path:      pth,
-		excludes:  findExcludes(pth, excludeGlobs),
+		excludes:  excludes,
 		usesGodep: err == nil,
 	}
 
@@ -87,7 +91,7 @@ func NewGoSource(pth string, excludeGlobs ...string) *GoSource {
 		}
 	}
 
-	return src
+	return src, nil
 }
 
 // readGlideConf parses glide.yaml to extract the package name and the

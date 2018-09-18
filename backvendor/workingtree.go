@@ -53,8 +53,13 @@ func NewWorkingTree(project *vcs.RepoRoot) (*WorkingTree, error) {
 		return nil, err
 	}
 
+	source, err := NewGoSource(dir)
+	if err != nil {
+		return nil, err
+	}
+
 	return &WorkingTree{
-		Source: NewGoSource(dir),
+		Source: source,
 		VCS:    project.VCS,
 	}, nil
 }

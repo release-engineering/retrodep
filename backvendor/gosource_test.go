@@ -20,7 +20,10 @@ import (
 )
 
 func TestDirs(t *testing.T) {
-	src := NewGoSource("testdata/gosource")
+	src, err := NewGoSource("testdata/gosource")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if src.Path != "testdata/gosource" {
 		t.Fatal("Path")
 	}
@@ -30,14 +33,20 @@ func TestDirs(t *testing.T) {
 }
 
 func TestGodepFalse(t *testing.T) {
-	src := NewGoSource("testdata/gosource")
+	src, err := NewGoSource("testdata/gosource")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if src.usesGodep {
 		t.Fatal("usesGodep")
 	}
 }
 
 func TestGodepTrue(t *testing.T) {
-	src := NewGoSource("testdata/godep")
+	src, err := NewGoSource("testdata/godep")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !src.usesGodep {
 		t.Fatal("usesGodep")
 	}
