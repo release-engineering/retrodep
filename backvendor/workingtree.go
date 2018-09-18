@@ -18,7 +18,6 @@ package backvendor
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -111,127 +110,42 @@ func (wt *WorkingTree) Revisions() ([]string, error) {
 	if wt.VCS.Cmd != vcsGit {
 		return nil, ErrorUnknownVCS
 	}
-
-	buf, err := wt.run("rev-list", "--all")
-	if err != nil {
-		os.Stderr.Write(buf.Bytes())
-		return nil, err
-	}
-	revisions := make([]string, 0)
-	output := bufio.NewScanner(buf)
-	for output.Scan() {
-		revisions = append(revisions, strings.TrimSpace(output.Text()))
-	}
-	return revisions, nil
+	return wt.gitRevisions()
 }
 
+// RevisionFromTag returns the revision (e.g. commit hash) for the
+// given tag.
 func (wt *WorkingTree) RevisionFromTag(tag string) (string, error) {
 	if wt.VCS.Cmd != vcsGit {
 		return "", ErrorUnknownVCS
 	}
-
-	buf, err := wt.run("rev-parse", tag)
-	if err != nil {
-		os.Stderr.Write(buf.Bytes())
-		return "", err
-	}
-	rev := strings.TrimSpace(buf.String())
-	return rev, nil
+	return wt.gitRevisionFromTag(tag)
 }
 
 // RevSync updates the working tree to reflect the tag or revision ref.
 func (wt *WorkingTree) RevSync(ref string) error {
 	if wt.VCS.Cmd != vcsGit {
-		return wt.VCS.TagSync(wt.Source.Path, ref)
+		return ErrorUnknownVCS
 	}
-
-	buf, err := wt.run("checkout", ref)
-	if err != nil {
-		os.Stderr.Write(buf.Bytes())
-	}
-	return err
+	return wt.gitRevSync(ref)
 }
 
+// timeFromRevision returns the commit timestamp for the revision rev.
 func (wt *WorkingTree) timeFromRevision(rev string) (time.Time, error) {
-	var t time.Time
 	if wt.VCS.Cmd != vcsGit {
+		var t time.Time
 		return t, ErrorUnknownVCS
 	}
-
-	buf, err := wt.run("show", "-s", "--pretty=format:%cI", rev)
-	if err != nil {
-		return t, err
-	}
-
-	t, err = time.Parse(time.RFC3339, strings.TrimSpace(buf.String()))
-	return t, err
+	return wt.gitTimeFromRev(rev)
 }
 
-// gitReachableMatchingTag uses git to find a reachable tag from a
-// given revision rev. It limits the reachable tags using the glob
-// pattern match. If exact is true, the tag must be exactly at
-// revision rev, not just reachable (the output is parsed differently
-// in this case).
-func (wt *WorkingTree) gitReachableMatchingTag(rev, match string, exact bool) (string, error) {
-	argv := []string{"describe", "--tags", "--match=" + match}
-	if exact {
-		argv = append(argv, "--exact-match")
-	}
-	argv = append(argv, rev)
-	buf, err := wt.run(argv...)
-	output := strings.TrimSpace(buf.String())
-	if err != nil {
-		// Catch failures due to not finding an appropriate tag
-		output = strings.ToLower(output)
-		switch {
-		// fatal: no tag exactly matches ...
-		// fatal: no tags can describe ...
-		// fatal: no names found, cannot describe anything.
-		// fatal: no annotated tags can describe ...
-		case strings.HasPrefix(output, "fatal: no tag"),
-			strings.HasPrefix(output, "fatal: no names"),
-			strings.HasPrefix(output, "fatal: no annotated tag"):
-			err = ErrorVersionNotFound
-		default:
-			os.Stderr.Write(buf.Bytes())
-		}
-		return "", err
-	}
-
-	if exact {
-		return output, nil
-	}
-
-	fields := strings.Split(output, "-")
-	if len(fields) < 3 {
-		cmd := strings.Join(append([]string{wt.VCS.Cmd}, argv...), " ")
-		return "", fmt.Errorf("expected at least two dashes: %s: %s", cmd, output)
-	}
-	return strings.Join(fields[:len(fields)-2], "-"), nil
-}
-
-// reachableTag returns the most recent reachable semver tag.
+// reachableTag returns the most recent reachable semver tag. It
+// returns ErrorVersionNotFound if no suitable tag is found.
 func (wt *WorkingTree) reachableTag(rev string) (string, error) {
 	if wt.VCS.Cmd != vcsGit {
 		return "", ErrorUnknownVCS
 	}
-
-	for _, exact := range []bool{true, false} {
-		for _, match := range []string{"v[0-9]*", "[0-9]*"} {
-			tag, err := wt.gitReachableMatchingTag(rev, match, exact)
-			if err != nil {
-				if err == ErrorVersionNotFound {
-					continue
-				}
-				return "", err
-			}
-			if tag != "" {
-				return tag, nil
-			}
-		}
-	}
-
-	return "", ErrorVersionNotFound
+	return wt.gitReachableTag(rev)
 }
 
 func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
@@ -279,38 +193,7 @@ func (wt *WorkingTree) FileHashesFromRef(ref string) (*FileHashes, error) {
 	if wt.VCS.Cmd != vcsGit {
 		return nil, ErrorUnknownVCS
 	}
-
-	buf, err := wt.run("ls-tree", "-r", ref)
-	if err != nil {
-		if strings.HasPrefix(buf.String(), "fatal: Not a valid object name ") {
-			// This is a branch name, not a tag name
-			return nil, ErrorInvalidRef
-		}
-
-		os.Stderr.Write(buf.Bytes())
-		return nil, err
-	}
-	fh := make(map[string]FileHash)
-	scanner := bufio.NewScanner(buf)
-	for scanner.Scan() {
-		line := scanner.Text()
-		fields := strings.Fields(line)
-		if len(fields) < 4 {
-			return nil, fmt.Errorf("line not understood: %s", line)
-		}
-
-		var mode uint32
-		if _, err = fmt.Sscanf(fields[0], "%o", &mode); err != nil {
-			return nil, err
-		}
-		fh[fields[3]] = FileHash(fields[2])
-	}
-
-	return &FileHashes{
-		vcsCmd: vcsGit,
-		root:   wt.Source.Path,
-		hashes: fh,
-	}, nil
+	return wt.gitFileHashesFromRef(ref)
 }
 
 const quotedRE = `(?:"[^"]+"|` + "`[^`]+`)"
