@@ -171,10 +171,10 @@ func importPathFromFilepath(pth string) (string, bool) {
 }
 
 func findImportComment(src *GoSource) (string, error) {
+	errFound := errors.New("found")
 	var importPath string
 	search := func(pth string, info os.FileInfo, err error) error {
-		_, skip := src.excludes[pth]
-		if skip || importPath != "" {
+		if _, skip := src.excludes[pth]; skip {
 			if info.IsDir() {
 				return filepath.SkipDir
 			}
@@ -229,16 +229,15 @@ func findImportComment(src *GoSource) (string, error) {
 				return nil
 			}
 			importPath = pth[1 : len(pth)-1]
-			break
+			return errFound
 		}
 		return nil
 	}
 
 	err := filepath.Walk(src.Path, search)
-	if err != nil {
-		return "", err
-	}
-	if importPath == "" {
+	if err == errFound {
+		err = nil
+	} else if err == nil {
 		err = errorNoImportPathComment
 	}
 	return importPath, err
