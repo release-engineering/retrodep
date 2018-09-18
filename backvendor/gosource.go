@@ -72,7 +72,7 @@ func findExcludes(pth string, globs []string) map[string]struct{} {
 }
 
 func NewGoSource(pth string, excludeGlobs ...string) *GoSource {
-	_, err := os.Stat(filepath.Join(pth, "Godeps/Godeps.json"))
+	_, err := os.Stat(filepath.Join(pth, "Godeps", "Godeps.json"))
 	src := &GoSource{
 		Path:      pth,
 		excludes:  findExcludes(pth, excludeGlobs),
