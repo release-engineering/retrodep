@@ -194,9 +194,11 @@ func (wt *WorkingTree) reachableTag(rev string) (string, error) {
 		return "", ErrorVersionNotFound
 	}
 
+	log.Debugf("%s is described as %s", rev, tag)
 	fields := strings.Split(tag, "-")
 	if len(fields) < 3 {
-		return "", fmt.Errorf("too few dashes: %s", tag)
+		// This matches a tag exactly (it must not be a semver tag)
+		return tag, nil
 	}
 	tag = strings.Join(fields[:len(fields)-2], "-")
 	return tag, nil
