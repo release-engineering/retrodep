@@ -126,13 +126,25 @@ func updateHashesAfterStrip(hashes *FileHashes, wt *WorkingTree, ref string, pat
 		if err != nil {
 			return true, errors.Wrap(err, "updating hash")
 		}
-		defer f.Close()
+
+		// Remove the new file after we've hashed it
 		defer os.Remove(f.Name())
-		_, err = w.WriteTo(f)
+
+		// Write to the file and close it, checking for errors
+		err = func() (err error) {
+			defer func() {
+				cerr := f.Close()
+				if err == nil {
+					// Write didn't fail but Close did
+					err = cerr
+				}
+			}()
+
+			_, err = w.WriteTo(f)
+			return err
+		}()
+
 		if err != nil {
-			return true, errors.Wrap(err, "updating hash")
-		}
-		if err := f.Close(); err != nil {
 			return true, errors.Wrap(err, "updating hash")
 		}
 
