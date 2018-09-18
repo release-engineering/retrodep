@@ -200,6 +200,7 @@ func findImportComment(src *GoSource) (string, error) {
 		if err != nil {
 			return err
 		}
+		defer r.Close()
 		scanner := bufio.NewScanner(bufio.NewReader(r))
 		for scanner.Scan() {
 			line := scanner.Text()
