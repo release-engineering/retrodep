@@ -261,10 +261,9 @@ func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Refere
 	// project).
 	strip := src.usesGodep && root != src.Path
 	match, err := matchFromRefs(strip, hashes, wt, tags)
-	if err != nil && err != ErrorVersionNotFound {
-		return nil, err
-	}
-	if err != ErrorVersionNotFound {
+	switch err {
+	case nil:
+		// Found a match
 		rev, err := wt.RevisionFromTag(match)
 		if err != nil {
 			return nil, err
@@ -275,6 +274,11 @@ func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Refere
 			Rev: rev,
 			Ver: match,
 		}, nil
+	case ErrorVersionNotFound:
+		// No match, carry on
+	default:
+		// Some other error, fail
+		return nil, err
 	}
 
 	// Next try each revision
