@@ -53,7 +53,7 @@ type glideConf struct {
 	Package string
 	Import  []struct {
 		Package string
-		Repo    string `json:omitempty`
+		Repo    string `json:"omitempty"`
 	}
 }
 
