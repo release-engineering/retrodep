@@ -193,7 +193,7 @@ func (wt *WorkingTree) reachableTag(rev string) (string, error) {
 	if len(fields) < 3 {
 		return "", fmt.Errorf("too few dashes: %s", tag)
 	}
-	tag = strings.Join(fields[:len(fields)-2], "")
+	tag = strings.Join(fields[:len(fields)-2], "-")
 	return tag, nil
 }
 
