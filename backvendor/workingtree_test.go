@@ -27,9 +27,11 @@ func TestStripImportCommentPackage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wt := &WorkingTree{
-		Source: src,
-		VCS:    vcs.ByCmd("git"),
+	wt := &gitWorkingTree{
+		anyWorkingTree: anyWorkingTree{
+			Source: src,
+			VCS:    vcs.ByCmd("git"),
+		},
 	}
 
 	w := bytes.NewBuffer(nil)
@@ -51,9 +53,11 @@ func TestStripImportCommentNewline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wt := &WorkingTree{
-		Source: src,
-		VCS:    vcs.ByCmd("git"),
+	wt := &gitWorkingTree{
+		anyWorkingTree: anyWorkingTree{
+			Source: src,
+			VCS:    vcs.ByCmd("git"),
+		},
 	}
 
 	w := bytes.NewBuffer(nil)

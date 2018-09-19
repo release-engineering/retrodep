@@ -35,16 +35,66 @@ import (
 
 var execCommand = exec.Command
 
-// A WorkingTree is a local checkout of Go source code, and
-// information about the version control system it came from.
-type WorkingTree struct {
+// Describable is the interface which capture the methods required for
+// creating a pseudo-version from a revision.
+type Describable interface {
+	// ReachableTag returns the most recent reachable tag,
+	// preferring semver tags. It returns ErrorVersionNotFound if
+	// no suitable tag is found.
+	ReachableTag(rev string) (string, error)
+
+	// TimeFromRevision returns the commit timestamp from the
+	// revision rev.
+	TimeFromRevision(rev string) (time.Time, error)
+}
+
+// A WorkingTree is a local checkout of Go source code, and methods to
+// interact with the version control system it came from.
+type WorkingTree interface {
+	io.Closer
+
+	// Should be something that supports creating pseudo-versions.
+	Describable
+
+	// TagSync syncs the repo to the named tag.
+	TagSync(tag string) error
+
+	// VersionTags returns the semantic version tags.
+	VersionTags() ([]string, error)
+
+	// Revisions returns all revisions, newest to oldest.
+	Revisions() ([]string, error)
+
+	// FileHashesFromRef returns the file hashes for the tag or
+	// revision ref.
+	FileHashesFromRef(ref string) (*FileHashes, error)
+
+	// RevSync syncs the repo to the named revision.
+	RevSync(rev string) error
+
+	// RevisionFromTag returns the revision ID from the tag.
+	RevisionFromTag(tag string) (string, error)
+
+	// StripImportComment removes import comments from package
+	// declarations in the same way godep does, writing the result
+	// (if changed) to w. It returns a boolean indicating whether
+	// an import comment was removed.
+	//
+	// The file content may be written to w even if no change was made.
+	StripImportComment(path string, w io.Writer) (bool, error)
+}
+
+// anyWorkingTree uses the golang.org/x/tools/go/vcs Cmd type for
+// interacting with the working tree. Other types build on this to
+// provide methods not handled by vcs.Cmd.
+type anyWorkingTree struct {
 	Source *GoSource
 	VCS    *vcs.Cmd
 }
 
 // NewWorkingTree creates a local checkout of the version control
 // system for a Go project.
-func NewWorkingTree(project *vcs.RepoRoot) (*WorkingTree, error) {
+func NewWorkingTree(project *vcs.RepoRoot) (WorkingTree, error) {
 	dir, err := ioutil.TempDir("", "backvendor.")
 	if err != nil {
 		return nil, err
@@ -59,20 +109,31 @@ func NewWorkingTree(project *vcs.RepoRoot) (*WorkingTree, error) {
 		return nil, err
 	}
 
-	return &WorkingTree{
+	wt := anyWorkingTree{
 		Source: source,
 		VCS:    project.VCS,
-	}, nil
+	}
+	switch project.VCS.Cmd {
+	case vcsGit:
+		return &gitWorkingTree{anyWorkingTree: wt}, nil
+	}
+
+	wt.Close()
+	return nil, ErrorUnknownVCS
 }
 
 // Close removes the local checkout.
-func (wt *WorkingTree) Close() error {
+func (wt *anyWorkingTree) Close() error {
 	return os.RemoveAll(wt.Source.Path)
+}
+
+func (wt *anyWorkingTree) TagSync(tag string) error {
+	return wt.VCS.TagSync(wt.Source.Path, tag)
 }
 
 // VersionTags returns the tags that are parseable as semantic tags,
 // e.g. v1.1.0.
-func (wt *WorkingTree) VersionTags() ([]string, error) {
+func (wt *anyWorkingTree) VersionTags() ([]string, error) {
 	tags, err := wt.VCS.Tags(wt.Source.Path)
 	if err != nil {
 		return nil, err
@@ -97,7 +158,7 @@ func (wt *WorkingTree) VersionTags() ([]string, error) {
 
 // run runs the VCS command with the provided args
 // and returns a bytes.Buffer.
-func (wt *WorkingTree) run(args ...string) (*bytes.Buffer, error) {
+func (wt *anyWorkingTree) run(args ...string) (*bytes.Buffer, error) {
 	p := execCommand(wt.VCS.Cmd, args...)
 	var buf bytes.Buffer
 	p.Stdout = &buf
@@ -107,57 +168,12 @@ func (wt *WorkingTree) run(args ...string) (*bytes.Buffer, error) {
 	return &buf, err
 }
 
-// Revisions returns all revisions in the repository.
-func (wt *WorkingTree) Revisions() ([]string, error) {
-	if wt.VCS.Cmd != vcsGit {
-		return nil, ErrorUnknownVCS
-	}
-	return wt.gitRevisions()
-}
-
-// RevisionFromTag returns the revision (e.g. commit hash) for the
-// given tag.
-func (wt *WorkingTree) RevisionFromTag(tag string) (string, error) {
-	if wt.VCS.Cmd != vcsGit {
-		return "", ErrorUnknownVCS
-	}
-	return wt.gitRevisionFromTag(tag)
-}
-
-// RevSync updates the working tree to reflect the tag or revision ref.
-func (wt *WorkingTree) RevSync(ref string) error {
-	if wt.VCS.Cmd != vcsGit {
-		return ErrorUnknownVCS
-	}
-	return wt.gitRevSync(ref)
-}
-
-// timeFromRevision returns the commit timestamp for the revision rev.
-func (wt *WorkingTree) timeFromRevision(rev string) (time.Time, error) {
-	if wt.VCS.Cmd != vcsGit {
-		var t time.Time
-		return t, ErrorUnknownVCS
-	}
-	return wt.gitTimeFromRev(rev)
-}
-
-// reachableTag returns the most recent reachable semver tag. It
-// returns ErrorVersionNotFound if no suitable tag is found.
-func (wt *WorkingTree) reachableTag(rev string) (string, error) {
-	if wt.VCS.Cmd != vcsGit {
-		return "", ErrorUnknownVCS
-	}
-	return wt.gitReachableTag(rev)
-}
-
-func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
-	if wt.VCS.Cmd != vcsGit {
-		return "", ErrorUnknownVCS
-	}
-
+// PseudoVersion returns a semantic-like comparable version for a
+// revision, based on tags reachable from that revision.
+func PseudoVersion(d Describable, rev string) (string, error) {
 	suffix := "-0." // This commit is *before* some other tag
 	var version string
-	reachable, err := wt.reachableTag(rev)
+	reachable, err := d.ReachableTag(rev)
 	if err == ErrorVersionNotFound {
 		version = "v0.0.0"
 	} else if err != nil {
@@ -180,7 +196,7 @@ func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
 		}
 	}
 
-	t, err := wt.timeFromRevision(rev)
+	t, err := d.TimeFromRevision(rev)
 	if err != nil {
 		return "", err
 	}
@@ -188,14 +204,6 @@ func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
 	timestamp := t.Format("20060102150405")
 	pseudo := version + suffix + timestamp + "-" + rev[:12]
 	return pseudo, nil
-}
-
-// FileHashesFromRef returns the file hashes from a particular tag or revision.
-func (wt *WorkingTree) FileHashesFromRef(ref string) (*FileHashes, error) {
-	if wt.VCS.Cmd != vcsGit {
-		return nil, ErrorUnknownVCS
-	}
-	return wt.gitFileHashesFromRef(ref)
 }
 
 const quotedRE = `(?:"[^"]+"|` + "`[^`]+`)"
@@ -221,7 +229,7 @@ func removeImportComment(line []byte) []byte {
 // comment was removed.
 //
 // The file content may be written to w even if no change was made.
-func (wt *WorkingTree) StripImportComment(path string, w io.Writer) (bool, error) {
+func (wt *anyWorkingTree) StripImportComment(path string, w io.Writer) (bool, error) {
 	if !strings.HasSuffix(path, ".go") {
 		return false, nil
 	}

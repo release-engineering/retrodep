@@ -82,9 +82,11 @@ func TestHelper(t *testing.T) {
 func TestGitRevisions(t *testing.T) {
 	defer mockExecCommand()()
 
-	wt := WorkingTree{
-		Source: &GoSource{},
-		VCS:    vcs.ByCmd("git"),
+	wt := gitWorkingTree{
+		anyWorkingTree: anyWorkingTree{
+			Source: &GoSource{},
+			VCS:    vcs.ByCmd("git"),
+		},
 	}
 
 	expectedRevs := []string{
@@ -112,9 +114,11 @@ func TestGitRevisions(t *testing.T) {
 func TestGitRevisionsError(t *testing.T) {
 	defer mockExecCommand()()
 
-	wt := WorkingTree{
-		Source: &GoSource{},
-		VCS:    vcs.ByCmd("git"),
+	wt := gitWorkingTree{
+		anyWorkingTree: anyWorkingTree{
+			Source: &GoSource{},
+			VCS:    vcs.ByCmd("git"),
+		},
 	}
 
 	mockedStderr = "fatal: not a git repository\n"

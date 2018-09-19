@@ -20,7 +20,11 @@ import (
 )
 
 func TestNewFileHashes(t *testing.T) {
-	hashes, err := NewFileHashes("git", "testdata/gosource", nil)
+	hasher, ok := NewHasher("git")
+	if !ok {
+		t.Fatal("git unknown to NewHasher")
+	}
+	hashes, err := NewFileHashes(hasher, "testdata/gosource", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,9 +33,6 @@ func TestNewFileHashes(t *testing.T) {
 	}
 	if hashes.root != "testdata/gosource" {
 		t.Fatalf("Incorrect hashes.root (%s)", hashes.root)
-	}
-	if hashes.vcsCmd != "git" {
-		t.Fatalf("Incorrect hashes.vcsCmd (%s)", hashes.vcsCmd)
 	}
 	emptyhash := FileHash("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
 	expected := map[string]FileHash{
@@ -58,7 +59,11 @@ func TestNewFileHashes(t *testing.T) {
 func TestNewFileHashesExclude(t *testing.T) {
 	excludes := make(map[string]struct{})
 	excludes["testdata/gosource/ignored.go"] = struct{}{}
-	hashes, err := NewFileHashes("git", "testdata/gosource", excludes)
+	hasher, ok := NewHasher("git")
+	if !ok {
+		t.Fatal("git unknown to NewHasher")
+	}
+	hashes, err := NewFileHashes(hasher, "testdata/gosource", excludes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +89,11 @@ func TestNewFileHashesExclude(t *testing.T) {
 }
 
 func TestIsSubsetOf(t *testing.T) {
-	hashes, err := NewFileHashes("git", "testdata/gosource", nil)
+	hasher, ok := NewHasher("git")
+	if !ok {
+		t.Fatal("git unknown to NewHasher")
+	}
+	hashes, err := NewFileHashes(hasher, "testdata/gosource", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +103,7 @@ func TestIsSubsetOf(t *testing.T) {
 	}
 
 	other := &FileHashes{
-		vcsCmd: hashes.vcsCmd,
+		h:      hasher,
 		root:   hashes.root,
 		hashes: make(map[string]FileHash),
 	}

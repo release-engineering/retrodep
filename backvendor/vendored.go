@@ -106,7 +106,7 @@ func (src GoSource) VendoredProjects() (map[string]*vcs.RepoRoot, error) {
 // import comments (in the same way as godep).  The boolean return
 // value indicates whether any of the supplied hashes were modified as
 // a result.
-func updateHashesAfterStrip(hashes *FileHashes, wt *WorkingTree, ref string, paths []string) (bool, error) {
+func updateHashesAfterStrip(hashes *FileHashes, wt WorkingTree, ref string, paths []string) (bool, error) {
 	// Update working tree to match the ref
 	err := wt.RevSync(ref)
 	if err != nil {
@@ -145,7 +145,7 @@ func updateHashesAfterStrip(hashes *FileHashes, wt *WorkingTree, ref string, pat
 		}
 
 		// Re-hash the altered file
-		h, err := hashFile(hashes.vcsCmd, path, f.Name())
+		h, err := hashes.h.Hash(path, f.Name())
 		if err != nil {
 			return anyChanged, err
 		}
@@ -157,7 +157,7 @@ func updateHashesAfterStrip(hashes *FileHashes, wt *WorkingTree, ref string, pat
 	return anyChanged, nil
 }
 
-func matchFromRefs(strip bool, hashes *FileHashes, wt *WorkingTree, refs []string) (string, error) {
+func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, refs []string) (string, error) {
 	var paths []string
 	if strip {
 		for hash, _ := range hashes.hashes {
@@ -232,7 +232,11 @@ func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Refere
 	}
 	// Ignore vendor directory
 	excludes[filepath.Join(root, "vendor")] = struct{}{}
-	hashes, err := NewFileHashes(wt.VCS.Cmd, root, excludes)
+	hasher, ok := NewHasher(project.VCS.Cmd)
+	if !ok {
+		return nil, ErrorUnknownVCS
+	}
+	hashes, err := NewFileHashes(hasher, root, excludes)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +294,7 @@ func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Refere
 		return nil, err
 	}
 
-	ver, err := wt.PseudoVersion(rev)
+	ver, err := PseudoVersion(wt, rev)
 	if err != nil {
 		return nil, err
 	}

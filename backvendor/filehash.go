@@ -17,9 +17,7 @@ package backvendor
 
 import (
 	"bufio"
-	"bytes"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
@@ -29,38 +27,41 @@ import (
 // version control system that tracks it.
 type FileHash string
 
+// Hasher is the interface that wraps the Hash method.
+type Hasher interface {
+	// Hash returns the file hash for the filename absPath, hashed
+	// as though it were in the repository as filename
+	// relativePath.
+	Hash(relativePath, absPath string) (FileHash, error)
+}
+
+func NewHasher(vcsCmd string) (Hasher, bool) {
+	switch vcsCmd {
+	case vcsGit:
+		return &gitHasher{}, true
+	}
+	return nil, false
+}
+
 // FileHashes is a map of paths, relative to the top-level of the
 // version control system, to their hashes.
 type FileHashes struct {
-	vcsCmd, root string
-	hashes       map[string]FileHash
-}
+	// h is the Hasher used to create each FileHash
+	h Hasher
 
-func hashFile(vcsCmd, relativePath, absPath string) (FileHash, error) {
-	if vcsCmd != vcsGit {
-		return FileHash(""), ErrorUnknownVCS
-	}
+	// root is the top level directory
+	root string
 
-	args := []string{"hash-object", "--path", relativePath, absPath}
-	cmd := exec.Command(vcsCmd, args...)
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
-	err := cmd.Run()
-	if err != nil {
-		os.Stderr.Write(buf.Bytes())
-		return FileHash(""), err
-	}
-
-	return FileHash(strings.TrimSpace(buf.String())), nil
+	// hashes maps a relative filename to its FileHash
+	hashes map[string]FileHash
 }
 
 // NewFileHashes returns a new FileHashes from a filesystem tree at root,
 // whose files belong to the version control system named in vcsCmd. Keys in
 // the excludes map are filenames to ignore.
-func NewFileHashes(vcsCmd, root string, excludes map[string]struct{}) (*FileHashes, error) {
+func NewFileHashes(h Hasher, root string, excludes map[string]struct{}) (*FileHashes, error) {
 	hashes := &FileHashes{
-		vcsCmd: vcsCmd,
+		h:      h,
 		root:   root,
 		hashes: make(map[string]FileHash),
 	}
@@ -125,7 +126,7 @@ func NewFileHashes(vcsCmd, root string, excludes map[string]struct{}) (*FileHash
 			return nil
 		}
 		relativePath := path[rootlen:]
-		fileHash, err := hashFile(vcsCmd, relativePath, path)
+		fileHash, err := h.Hash(relativePath, path)
 		if err != nil {
 			return err
 		}
