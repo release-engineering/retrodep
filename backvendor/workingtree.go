@@ -182,6 +182,7 @@ func (wt *WorkingTree) gitReachableMatchingTag(rev, match string, exact bool) (s
 	output := strings.TrimSpace(buf.String())
 	if err != nil {
 		// Catch failures due to not finding an appropriate tag
+		output = strings.ToLower(output)
 		switch {
 		// fatal: no tag exactly matches ...
 		// fatal: no tags can describe ...
@@ -189,7 +190,7 @@ func (wt *WorkingTree) gitReachableMatchingTag(rev, match string, exact bool) (s
 		// fatal: no annotated tags can describe ...
 		case strings.HasPrefix(output, "fatal: no tag"),
 			strings.HasPrefix(output, "fatal: no names"),
-			strings.HasPrefix(output, "fatal: No annotated tag"):
+			strings.HasPrefix(output, "fatal: no annotated tag"):
 			err = ErrorVersionNotFound
 		default:
 			os.Stderr.Write(buf.Bytes())
