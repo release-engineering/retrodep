@@ -33,6 +33,8 @@ import (
 	"golang.org/x/tools/go/vcs"
 )
 
+var execCommand = exec.Command
+
 // A WorkingTree is a local checkout of Go source code, and
 // information about the version control system it came from.
 type WorkingTree struct {
@@ -96,7 +98,7 @@ func (wt *WorkingTree) VersionTags() ([]string, error) {
 // run runs the VCS command with the provided args
 // and returns a bytes.Buffer.
 func (wt *WorkingTree) run(args ...string) (*bytes.Buffer, error) {
-	p := exec.Command(wt.VCS.Cmd, args...)
+	p := execCommand(wt.VCS.Cmd, args...)
 	var buf bytes.Buffer
 	p.Stdout = &buf
 	p.Stderr = &buf
