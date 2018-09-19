@@ -244,36 +244,6 @@ func (wt *WorkingTree) PseudoVersion(rev string) (string, error) {
 	return pseudo, nil
 }
 
-// FileHashesAreSubset compares a set of files and their hashes with
-// those from a particular tag. It returns true if the provided files
-// and hashes are a subset of those found at the tag.
-func (wt *WorkingTree) FileHashesAreSubset(fh *FileHashes, tag string) (bool, error) {
-	if wt.VCS.Cmd != vcsGit || wt.VCS.Cmd != fh.vcsCmd {
-		return false, ErrorUnknownVCS
-	}
-
-	tagFileHashes, err := wt.FileHashesFromRef(tag)
-	if err != nil {
-		if err == ErrorInvalidRef {
-			err = nil
-		}
-
-		return false, err
-	}
-	for path, fileHash := range fh.hashes {
-		tagFileHash, ok := tagFileHashes.hashes[path]
-		if !ok {
-			// File not present in tag
-			return false, nil
-		}
-		if fileHash != tagFileHash {
-			// Hash does not match
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
 // FileHashesFromRef returns the file hashes from a particular tag or revision.
 func (wt *WorkingTree) FileHashesFromRef(ref string) (*FileHashes, error) {
 	if wt.VCS.Cmd != vcsGit {
