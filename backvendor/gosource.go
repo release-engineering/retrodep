@@ -25,8 +25,15 @@ import (
 	"github.com/op/go-logging"
 	"github.com/pkg/errors"
 	"golang.org/x/tools/go/vcs"
-	"gopkg.in/yaml.v2"
+
+	"github.com/release-engineering/backvendor/backvendor/glide"
 )
+
+type RepoRoot struct {
+	vcs.RepoRoot
+
+	Version string
+}
 
 var log = logging.MustGetLogger("backvendor")
 var errorNoImportPathComment = errors.New("no import path comment")
@@ -40,21 +47,13 @@ type GoSource struct {
 	Package string
 
 	// repoRoots maps apparent import paths to actual repositories
-	repoRoots map[string]*vcs.RepoRoot
+	repoRoots map[string]*RepoRoot
 
 	// excludes is a map of paths to ignore in this project
 	excludes map[string]struct{}
 
 	// usesGodep is true if Godeps/Godeps.json is present
 	usesGodep bool
-}
-
-type glideConf struct {
-	Package string
-	Import  []struct {
-		Package string
-		Repo    string `json:"omitempty"`
-	}
 }
 
 func findExcludes(pth string, globs []string) (map[string]struct{}, error) {
@@ -102,31 +101,45 @@ func readGlideConf(src *GoSource) bool {
 	if _, skip := src.excludes[conf]; skip {
 		return false
 	}
-	f, err := os.Open(conf)
-	if err != nil {
-		return false
-	}
-	defer f.Close()
 
-	// There is a glide.yaml so inspect it
-	dec := yaml.NewDecoder(f)
-	var glide glideConf
-	err = dec.Decode(&glide)
+	glide, err := glide.LoadGlide(src.Path)
 	if err != nil {
 		return false
 	}
 
 	src.Package = glide.Package
-	repoRoots := make(map[string]*vcs.RepoRoot)
-	for _, imp := range glide.Import {
+
+	// if there is no vendor folder, the dependencies are flattened
+	_, err = os.Stat(filepath.Join(src.Path, "vendor"))
+	if os.IsNotExist(err) {
+		return true
+	}
+	if err != nil {
+		return false
+	}
+
+	repoRoots := make(map[string]*RepoRoot)
+	for _, imp := range glide.Imports {
 		if imp.Repo == "" {
-			continue
+			root, err := vcs.RepoRootForImportPath(imp.Name, false)
+			if err != nil {
+				log.Infof("Skipping %v, could not determine repo root: %v", imp.Name, err)
+				continue
+			}
+			imp.Repo = root.Repo
+			if root.VCS.Cmd != "git" {
+				log.Infof("Skipping %v, not a git repository : %v", imp.Name, root.VCS.Cmd)
+				continue
+			}
 		}
 
-		repoRoots[imp.Package] = &vcs.RepoRoot{
-			VCS:  vcs.ByCmd(vcsGit),
-			Repo: imp.Repo,
-			Root: imp.Package,
+		repoRoots[imp.Name] = &RepoRoot{
+			RepoRoot: vcs.RepoRoot{
+				VCS:  vcs.ByCmd(vcsGit),
+				Repo: imp.Repo,
+				Root: imp.Name,
+			},
+			Version: imp.Version,
 		}
 	}
 
@@ -232,7 +245,7 @@ func (src GoSource) Vendor() string {
 // Project returns information about the project given its import
 // path. If importPath is "" it is deduced from import comments, if
 // available.
-func (src GoSource) Project(importPath string) (*vcs.RepoRoot, error) {
+func (src GoSource) Project(importPath string) (*RepoRoot, error) {
 	if importPath == "" {
 		importPath = src.Package
 		if importPath == "" {
@@ -241,10 +254,10 @@ func (src GoSource) Project(importPath string) (*vcs.RepoRoot, error) {
 	}
 
 	repoRoot, err := vcs.RepoRootForImportPath(importPath, false)
-	return repoRoot, err
+	return &RepoRoot{RepoRoot: *repoRoot}, err
 }
 
-func (src GoSource) RepoRootForImportPath(importPath string) (*vcs.RepoRoot, error) {
+func (src GoSource) RepoRootForImportPath(importPath string) (*RepoRoot, error) {
 	// First look up replacements
 	pth := importPath
 	for {
@@ -271,9 +284,9 @@ func (src GoSource) RepoRootForImportPath(importPath string) (*vcs.RepoRoot, err
 		importPath = path.Dir(importPath[:u])
 		r, nerr := vcs.RepoRootForImportPath(importPath, false)
 		if nerr == nil {
-			return r, nil
+			return &RepoRoot{RepoRoot: *r}, nil
 		}
 	}
 
-	return r, err
+	return &RepoRoot{RepoRoot: *r}, err
 }

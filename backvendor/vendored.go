@@ -24,7 +24,6 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
-	"golang.org/x/tools/go/vcs"
 )
 
 func pathStartsWith(dir, prefix string) bool {
@@ -40,7 +39,7 @@ type vendoredSearch struct {
 	lastdir string
 
 	// Vendored packages, indexed by Root
-	vendored map[string]*vcs.RepoRoot
+	vendored map[string]*RepoRoot
 }
 
 func (s *vendoredSearch) inLastDir(pth string) bool {
@@ -63,10 +62,10 @@ func processVendoredSource(src *GoSource, search *vendoredSearch, pth string) er
 
 // VendoredProjects return a map of project import names to information
 // about those projects, including which version control system they use.
-func (src GoSource) VendoredProjects() (map[string]*vcs.RepoRoot, error) {
+func (src GoSource) VendoredProjects() (map[string]*RepoRoot, error) {
 	search := vendoredSearch{
 		vendor:   src.Vendor(),
-		vendored: make(map[string]*vcs.RepoRoot),
+		vendored: make(map[string]*RepoRoot),
 	}
 	walkfn := func(pth string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -258,7 +257,7 @@ func chooseBestTag(tags []string) string {
 // DescribeProject attempts to identify the tag in the version control
 // system which corresponds to the project. Vendored files and files
 // whose names begin with "." are ignored.
-func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Reference, error) {
+func (src GoSource) DescribeProject(project *RepoRoot, root string) (*Reference, error) {
 	wt, err := NewWorkingTree(project)
 	if err != nil {
 		return nil, err
@@ -290,17 +289,41 @@ func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Refere
 	if len(hashes.hashes) == 0 {
 		return nil, ErrorNoFiles
 	}
+	// If godep is in use, strip import comments from the
+	// project's vendored files (but not files from the top-level
+	// project).
+	strip := src.usesGodep && root != src.Path
 
-	// First try matching against tags for semantic versions
+	// First try to match against a specific version, if specified
+	if project.Version != "" {
+		match, err := matchFromRefs(strip, hashes, wt, []string{project.Version})
+		switch err {
+		case nil:
+			// Found a match
+			log.Debugf("Found match for %v which matches dependency management version", match)
+			rev, err := PseudoVersion(wt, match[0])
+			if err != nil {
+				return nil, err
+			}
+
+			return &Reference{
+				Rev: rev,
+				Ver: match[0],
+			}, nil
+		case ErrorVersionNotFound:
+			// No match, carry on
+		default:
+			// Some other error, fail
+			return nil, err
+		}
+	}
+
+	// Second try matching against tags for semantic versions
 	tags, err := wt.VersionTags()
 	if err != nil {
 		return nil, err
 	}
 
-	// If godep is in use, strip import comments from the
-	// project's vendored files (but not files from the top-level
-	// project).
-	strip := src.usesGodep && root != src.Path
 	matches, err := matchFromRefs(strip, hashes, wt, tags)
 	switch err {
 	case nil:
@@ -323,7 +346,7 @@ func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Refere
 		return nil, err
 	}
 
-	// Next try each revision
+	// Third try each revision
 	revs, err := wt.Revisions()
 	if err != nil {
 		return nil, err
@@ -350,7 +373,7 @@ func (src GoSource) DescribeProject(project *vcs.RepoRoot, root string) (*Refere
 // DescribeVendoredProject attempts to identify the tag in the version
 // control system which corresponds to the vendored copy of the
 // project.
-func (src GoSource) DescribeVendoredProject(project *vcs.RepoRoot) (*Reference, error) {
+func (src GoSource) DescribeVendoredProject(project *RepoRoot) (*Reference, error) {
 	projectdir := filepath.Join(src.Vendor(), project.Root)
 	ref, err := src.DescribeProject(project, projectdir)
 	return ref, err

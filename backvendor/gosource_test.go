@@ -53,6 +53,26 @@ func TestGodepTrue(t *testing.T) {
 	}
 }
 
+func TestGlideFalse(t *testing.T) {
+	src, err := NewGoSource("testdata/godep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if src.Package == "github.com/release-engineering/backvendor/testdata/glide" {
+		t.Fatal("usesGlide")
+	}
+}
+
+func TestGlideTrue(t *testing.T) {
+	src, err := NewGoSource("testdata/glide")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if src.Package != "github.com/release-engineering/backvendor/testdata/glide" {
+		t.Fatal("usesGodep")
+	}
+}
+
 func TestImportPathFromFilepath(t *testing.T) {
 	tests := []struct {
 		filePath, importPath string
