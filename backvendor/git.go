@@ -148,14 +148,10 @@ func (g *gitWorkingTree) FileHashesFromRef(ref string) (*FileHashes, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		fields := strings.Fields(line)
-		if len(fields) < 4 {
+		if len(fields) != 4 {
 			return nil, fmt.Errorf("line not understood: %s", line)
 		}
 
-		var mode uint32
-		if _, err = fmt.Sscanf(fields[0], "%o", &mode); err != nil {
-			return nil, err
-		}
 		fh[fields[3]] = FileHash(fields[2])
 	}
 
