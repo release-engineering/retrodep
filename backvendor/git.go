@@ -165,7 +165,6 @@ func (g *gitWorkingTree) FileHashesFromRef(ref string) (*FileHashes, error) {
 	}
 	return &FileHashes{
 		h:      hasher,
-		root:   g.anyWorkingTree.Source.Path,
 		hashes: fh,
 	}, nil
 }

@@ -49,9 +49,6 @@ type FileHashes struct {
 	// h is the Hasher used to create each FileHash
 	h Hasher
 
-	// root is the top level directory
-	root string
-
 	// hashes maps a relative filename to its FileHash
 	hashes map[string]FileHash
 }
@@ -62,7 +59,6 @@ type FileHashes struct {
 func NewFileHashes(h Hasher, root string, excludes map[string]struct{}) (*FileHashes, error) {
 	hashes := &FileHashes{
 		h:      h,
-		root:   root,
 		hashes: make(map[string]FileHash),
 	}
 	root = path.Clean(root)

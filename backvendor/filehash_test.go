@@ -31,9 +31,6 @@ func TestNewFileHashes(t *testing.T) {
 	if hashes == nil {
 		t.Fatal("NewFileHashes returned nil map")
 	}
-	if hashes.root != "testdata/gosource" {
-		t.Fatalf("Incorrect hashes.root (%s)", hashes.root)
-	}
 	emptyhash := FileHash("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
 	expected := map[string]FileHash{
 		"ignored.go":                                 emptyhash,
@@ -104,7 +101,6 @@ func TestIsSubsetOf(t *testing.T) {
 
 	other := &FileHashes{
 		h:      hasher,
-		root:   hashes.root,
 		hashes: make(map[string]FileHash),
 	}
 	for k, v := range hashes.hashes {
