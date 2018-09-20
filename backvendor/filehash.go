@@ -17,10 +17,15 @@ package backvendor
 
 import (
 	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // FileHash records the hash of a file in the format preferred by the
@@ -33,6 +38,25 @@ type Hasher interface {
 	// as though it were in the repository as filename
 	// relativePath.
 	Hash(relativePath, absPath string) (FileHash, error)
+}
+
+type sha256Hasher struct{}
+
+// Hash implements the Hasher interface generically using sha256.
+func (h sha256Hasher) Hash(relativePath, absPath string) (FileHash, error) {
+	f, err := os.Open(absPath)
+	if err != nil {
+		return FileHash(""), errors.Wrapf(err, "hashing %s", absPath)
+	}
+	defer f.Close()
+
+	hash := sha256.New()
+	_, err = io.Copy(hash, f)
+	if err != nil {
+		return FileHash(""), errors.Wrapf(err, "hashing %s", absPath)
+	}
+
+	return FileHash(hex.EncodeToString(hash.Sum(nil))), nil
 }
 
 func NewHasher(vcsCmd string) (Hasher, bool) {

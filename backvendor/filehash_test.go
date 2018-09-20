@@ -19,6 +19,19 @@ import (
 	"testing"
 )
 
+func TestSha256Hasher(t *testing.T) {
+	h := sha256Hasher{}
+	// from sha256sum:
+	emptysum := FileHash("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+	fh, err := h.Hash("", "testdata/gosource/ignored.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fh != emptysum {
+		t.Errorf("unexpected hash: got %s, want %s", fh, emptysum)
+	}
+}
+
 func TestNewFileHashes(t *testing.T) {
 	hasher, ok := NewHasher("git")
 	if !ok {
