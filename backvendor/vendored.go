@@ -101,6 +101,11 @@ func (src GoSource) VendoredProjects() (map[string]*vcs.RepoRoot, error) {
 	return search.vendored, nil
 }
 
+// updateHashesAfterStrip syncs the tree to tag or revision ref and
+// recalculates file hashes for the provided paths based on stripping
+// import comments (in the same way as godep).  The boolean return
+// value indicates whether any of the supplied hashes were modified as
+// a result.
 func updateHashesAfterStrip(hashes *FileHashes, wt *WorkingTree, ref string, paths []string) (bool, error) {
 	// Update working tree to match the ref
 	err := wt.RevSync(ref)
@@ -119,41 +124,34 @@ func updateHashesAfterStrip(hashes *FileHashes, wt *WorkingTree, ref string, pat
 			continue
 		}
 
-		anyChanged = true
-
 		// Write the altered content out to a file
 		f, err := ioutil.TempFile("", "backvendor-strip.")
 		if err != nil {
-			return true, errors.Wrap(err, "updating hash")
+			return anyChanged, errors.Wrap(err, "updating hash")
 		}
 
 		// Remove the new file after we've hashed it
 		defer os.Remove(f.Name())
 
 		// Write to the file and close it, checking for errors
-		err = func() (err error) {
-			defer func() {
-				cerr := f.Close()
-				if err == nil {
-					// Write didn't fail but Close did
-					err = cerr
-				}
-			}()
-
-			_, err = w.WriteTo(f)
-			return err
-		}()
-
+		_, err = w.WriteTo(f)
 		if err != nil {
-			return true, errors.Wrap(err, "updating hash")
+			f.Close() // ignore any secondary error
+			return anyChanged, errors.Wrap(err, "updating hash")
+		}
+
+		if err = f.Close(); err != nil {
+			return anyChanged, errors.Wrap(err, "updating hash")
 		}
 
 		// Re-hash the altered file
 		h, err := hashFile(hashes.vcsCmd, path, f.Name())
 		if err != nil {
-			return false, err
+			return anyChanged, err
 		}
 		hashes.hashes[path] = h
+		anyChanged = true
+
 	}
 
 	return anyChanged, nil
