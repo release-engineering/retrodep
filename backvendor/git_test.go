@@ -16,68 +16,11 @@
 package backvendor
 
 import (
-	"fmt"
-	"os"
-	"os/exec"
-	"strconv"
 	"strings"
 	"testing"
 
 	"golang.org/x/tools/go/vcs"
 )
-
-const (
-	envHelper     = "GO_WANT_HELPER_PROCESS"
-	envStdout     = "STDOUT"
-	envStderr     = "STDERR"
-	envExitStatus = "EXIT_STATUS"
-)
-
-var mockedExitStatus int
-var mockedStdout, mockedStderr string
-
-// Capture exec.Command calls via execCommand and make them run our
-// fake version instead. This returns a function which the caller
-// should defer a call to in order to reset execCommand.
-func mockExecCommand() func() {
-	execCommand = fakeExecCommand
-
-	// Reset it afterwards
-	return func() {
-		execCommand = exec.Command
-		mockedExitStatus = 0
-		mockedStdout = ""
-		mockedStderr = ""
-	}
-}
-
-// Run this test binary (again!) but transfer control immediately to
-// TestHelper, telling it how to act.
-func fakeExecCommand(command string, args ...string) *exec.Cmd {
-	testBinary := os.Args[0]
-	opts := []string{"-test.run=TestHelper", "--", command}
-	opts = append(opts, args...)
-	cmd := exec.Command(testBinary, opts...)
-	cmd.Env = []string{
-		envHelper + "=1",
-		envStdout + "=" + mockedStdout,
-		envStderr + "=" + mockedStderr,
-		envExitStatus + "=" + strconv.Itoa(mockedExitStatus),
-	}
-	return cmd
-}
-
-// This runs in its own process (see fakeExecCommand) and mocks the
-// command being run.
-func TestHelper(t *testing.T) {
-	if os.Getenv(envHelper) != "1" {
-		return
-	}
-	fmt.Print(os.Getenv(envStdout))
-	fmt.Fprint(os.Stderr, os.Getenv(envStderr))
-	exit, _ := strconv.Atoi(os.Getenv(envExitStatus))
-	os.Exit(exit)
-}
 
 func TestGitRevisions(t *testing.T) {
 	defer mockExecCommand()()
