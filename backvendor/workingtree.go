@@ -116,6 +116,8 @@ func NewWorkingTree(project *vcs.RepoRoot) (WorkingTree, error) {
 	switch project.VCS.Cmd {
 	case vcsGit:
 		return &gitWorkingTree{anyWorkingTree: wt}, nil
+	case vcsHg:
+		return &hgWorkingTree{anyWorkingTree: wt}, nil
 	}
 
 	wt.Close()

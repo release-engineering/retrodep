@@ -63,6 +63,8 @@ func NewHasher(vcsCmd string) (Hasher, bool) {
 	switch vcsCmd {
 	case vcsGit:
 		return &gitHasher{}, true
+	case vcsHg:
+		return &sha256Hasher{}, true
 	}
 	return nil, false
 }

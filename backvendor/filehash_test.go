@@ -32,6 +32,28 @@ func TestSha256Hasher(t *testing.T) {
 	}
 }
 
+func TestNewFileHasher(t *testing.T) {
+	_, ok := NewHasher("unknown")
+	if ok {
+		t.Error("bad return from NewHasher with unknown vcs")
+	}
+
+	h, ok := NewHasher(vcsGit)
+	if !ok {
+		t.Errorf("bad return from NewHasher(%q)", vcsGit)
+	} else if _, ok = h.(*gitHasher); !ok {
+		t.Errorf("bad return from NewHasher(%q): %T", vcsGit, h)
+	}
+
+	h, ok = NewHasher(vcsHg)
+	if !ok {
+		t.Errorf("bad return from NewHasher(%q)", vcsHg)
+	} else if _, ok = h.(*sha256Hasher); !ok {
+		t.Errorf("bad return from NewHasher(%q): %T", vcsHg, h)
+	}
+
+}
+
 func TestNewFileHashes(t *testing.T) {
 	hasher, ok := NewHasher("git")
 	if !ok {

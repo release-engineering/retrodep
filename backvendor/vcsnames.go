@@ -16,3 +16,4 @@
 package backvendor
 
 const vcsGit = "git"
+const vcsHg = "hg"
