@@ -191,11 +191,11 @@ func findImportComment(src *GoSource) (string, error) {
 			return filepath.SkipDir
 		}
 		switch info.Name() {
-		// Skip these special directories since "vendor"
-		// contains local copies of dependencies and
-		// "testdata" includes data files only used for
+		// Skip these special directories since "vendor" and
+		// "_override" contain local copies of dependencies
+		// and "testdata" includes data files only used for
 		// testing that can be safely ignored.
-		case "vendor", "testdata":
+		case "vendor", "testdata", "_override":
 			return filepath.SkipDir
 		}
 
