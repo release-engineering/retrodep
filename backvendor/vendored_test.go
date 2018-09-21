@@ -49,3 +49,15 @@ func TestVendoredProjects(t *testing.T) {
 		t.Errorf("%v != %v", got, expected)
 	}
 }
+
+func TestChooseBestTag(t *testing.T) {
+	tags := []string{
+		"1.2.3-beta1",
+		"1.2.2",
+		"1.2.2-beta2",
+	}
+	best := chooseBestTag(tags)
+	if best != "1.2.2" {
+		t.Errorf("wrong best tag (%s)", best)
+	}
+}
