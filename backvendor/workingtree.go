@@ -101,11 +101,13 @@ func NewWorkingTree(project *vcs.RepoRoot) (WorkingTree, error) {
 	}
 	err = project.VCS.Create(dir, project.Repo)
 	if err != nil {
+		os.RemoveAll(dir)
 		return nil, err
 	}
 
 	source, err := NewGoSource(dir)
 	if err != nil {
+		os.RemoveAll(dir)
 		return nil, err
 	}
 
