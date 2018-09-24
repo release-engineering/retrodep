@@ -137,22 +137,13 @@ func readGlideConf(src *GoSource) bool {
 // importPathFromFilepath attempts to use the project directory path to
 // infer its import path.
 func importPathFromFilepath(pth string) (string, bool) {
-	if len(pth) < 1 {
+	absPath, err := filepath.Abs(pth)
+	if err != nil {
 		return "", false
 	}
 
-	var err error
-	if pth == "." {
-		pth, err = os.Getwd()
-		if err != nil {
-			return "", false
-		}
-	}
-
-	if pth[0] == filepath.Separator {
-		pth = pth[1:]
-	}
-
+	// Skip leading '/'
+	pth = absPath[1:]
 	components := strings.Split(pth, string(filepath.Separator))
 	if len(components) < 2 {
 		return "", false

@@ -16,6 +16,7 @@
 package backvendor
 
 import (
+	"os"
 	"testing"
 )
 
@@ -63,16 +64,34 @@ func TestImportPathFromFilepath(t *testing.T) {
 			true,
 		},
 		{
+			"/home/foo/github.com/release-engineering/backvendor/",
+			"github.com/release-engineering/backvendor",
+			true,
+		},
+		{
 			"release-engineering/backvendor",
 			"",
 			false,
 		},
 	}
 
+	// Start in the root directory to make sure Abs doesn't figure
+	// anything out from the path to the project we're in.
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(wd)
+	err = os.Chdir("/")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	for _, test := range tests {
 		importPath, ok := importPathFromFilepath(test.filePath)
 		if ok != test.ok {
-			t.Errorf("for %s got _,%v", test.filePath, ok)
+			t.Errorf("wrong ok value for %s: got _,%v, want _,%v",
+				test.filePath, ok, test.ok)
 			continue
 		}
 		if !ok {
@@ -80,7 +99,8 @@ func TestImportPathFromFilepath(t *testing.T) {
 		}
 
 		if importPath != test.importPath {
-			t.Errorf("for %s got %v,_", test.filePath, importPath)
+			t.Errorf("wrong path for %s: got %q, want %q",
+				test.filePath, importPath, test.importPath)
 		}
 	}
 }
