@@ -147,12 +147,18 @@ func (g *gitWorkingTree) FileHashesFromRef(ref string) (*FileHashes, error) {
 	scanner := bufio.NewScanner(buf)
 	for scanner.Scan() {
 		line := scanner.Text()
-		fields := strings.Fields(line)
-		if len(fields) != 4 {
-			return nil, fmt.Errorf("line not understood: %s", line)
+		// <mode> SP <type> SP <object> TAB <file>
+		ts := strings.SplitN(line, "\t", 2)
+		if len(ts) != 2 {
+			return nil, fmt.Errorf("expected TAB: %s", line)
+		}
+		filename := ts[1]
+		fields := strings.Fields(ts[0])
+		if len(fields) != 3 {
+			return nil, fmt.Errorf("expected 3 fields: %s", ts[0])
 		}
 
-		fh[fields[3]] = FileHash(fields[2])
+		fh[filename] = FileHash(fields[2])
 	}
 
 	hasher, ok := NewHasher(vcsGit)

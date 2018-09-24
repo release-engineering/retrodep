@@ -205,6 +205,8 @@ func TestGitFileHashesFromRef(t *testing.T) {
 		"100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391\tignored.go",
 		"100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391\tvendor/github.com/eggs/ham/ham.go",
 		"100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391\tvendor/github.com/foo/bar/bar.go",
+		// Test we can parse filenames that include spaces
+		"100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391\tvendor/github.com/foo/bar/bar baz.go",
 	}, "\n") + "\n"
 
 	h, err := wt.FileHashesFromRef("HEAD")
@@ -214,9 +216,10 @@ func TestGitFileHashesFromRef(t *testing.T) {
 
 	emptyhash := "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
 	expected := map[string]FileHash{
-		"ignored.go":                        FileHash(emptyhash),
-		"vendor/github.com/eggs/ham/ham.go": FileHash(emptyhash),
-		"vendor/github.com/foo/bar/bar.go":  FileHash(emptyhash),
+		"ignored.go":                           FileHash(emptyhash),
+		"vendor/github.com/eggs/ham/ham.go":    FileHash(emptyhash),
+		"vendor/github.com/foo/bar/bar.go":     FileHash(emptyhash),
+		"vendor/github.com/foo/bar/bar baz.go": FileHash(emptyhash),
 	}
 
 	if len(h.hashes) != len(expected) {
