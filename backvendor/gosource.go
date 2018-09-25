@@ -166,8 +166,13 @@ func importPathFromFilepath(pth string) (string, bool) {
 }
 
 func findImportComment(src *GoSource) (string, error) {
+	// Define the error we'll use to end the filepath.Walk method early.
 	errFound := errors.New("found")
+
+	// importPath holds the import path we've discovered. It will
+	// be updated by the 'search' closure, below.
 	var importPath string
+
 	search := func(pth string, info os.FileInfo, err error) error {
 		if _, skip := src.excludes[pth]; skip {
 			if info.IsDir() {
