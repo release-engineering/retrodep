@@ -16,6 +16,7 @@
 package backvendor // import "github.com/release-engineering/backvendor/backvendor"
 
 import (
+	"encoding/json"
 	"go/build"
 	"os"
 	"path"
@@ -75,22 +76,27 @@ func NewGoSource(pth string, excludeGlobs ...string) (*GoSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = os.Stat(filepath.Join(pth, "Godeps", "Godeps.json"))
-	if err != nil && !os.IsNotExist(err) {
-		return nil, err
-	}
+
 	src := &GoSource{
-		Path:      pth,
-		excludes:  excludes,
-		usesGodep: err == nil,
+		Path:     pth,
+		excludes: excludes,
 	}
 
+	// Always read Godeps.json because we need to know whether
+	// godep is in use (if so, files are modified when vendored).
+	err = loadGodepsConf(src)
+	if err != nil {
+		return nil, err
+	}
+
+	// Always read glide.yaml because we need to know if there are
+	// replacement repositories.
 	ok, err := readGlideConf(src)
 	if err != nil {
 		return nil, err
 	}
 
-	if !ok {
+	if !ok && src.Package == "" {
 		if importPath, err := findImportComment(src); err == nil {
 			src.Package = importPath
 		} else if importPath, ok := importPathFromFilepath(pth); ok {
@@ -99,6 +105,38 @@ func NewGoSource(pth string, excludeGlobs ...string) (*GoSource, error) {
 	}
 
 	return src, nil
+}
+
+// loadGodepsConf parses Godeps/Godeps.json to extract the package
+// name.
+func loadGodepsConf(src *GoSource) error {
+	type godepsConf struct {
+		ImportPath string
+	}
+	conf := filepath.Join(src.Path, "Godeps", "Godeps.json")
+	if _, skip := src.excludes[conf]; skip {
+		return nil
+	}
+	f, err := os.Open(conf)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	defer f.Close()
+
+	src.usesGodep = true
+	dec := json.NewDecoder(f)
+	var godeps godepsConf
+	err = dec.Decode(&godeps)
+	if err != nil {
+		return err
+	}
+
+	src.Package = godeps.ImportPath
+	log.Debugf("import path found from Godeps/Godeps.json: %s", src.Package)
+	return nil
 }
 
 // readGlideConf parses glide.yaml to extract the package name and the
@@ -119,6 +157,7 @@ func readGlideConf(src *GoSource) (bool, error) {
 	}
 
 	src.Package = glide.Package
+	log.Debugf("import path found from glide.yaml: %s", src.Package)
 
 	// if there is no vendor folder, the dependencies are flattened
 	_, err = os.Stat(filepath.Join(src.Path, "vendor"))

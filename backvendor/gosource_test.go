@@ -51,6 +51,11 @@ func TestGodepTrue(t *testing.T) {
 	if !src.usesGodep {
 		t.Fatal("usesGodep")
 	}
+	exp := "example.com/godep"
+	if src.Package != exp {
+		t.Errorf("wrong import path detected: want %s, got %s",
+			exp, src.Package)
+	}
 }
 
 func TestGlideFalse(t *testing.T) {
