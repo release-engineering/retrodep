@@ -16,7 +16,7 @@
 package backvendor // import "github.com/release-engineering/backvendor/backvendor"
 
 import (
-	"bufio"
+	"go/build"
 	"os"
 	"path"
 	"path/filepath"
@@ -178,52 +178,33 @@ func findImportComment(src *GoSource) (string, error) {
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
-			if info.Name() != "." &&
-				strings.HasPrefix(info.Name(), ".") {
-				return filepath.SkipDir
-			}
-			if info.Name() == "vendor" || info.Name() == "testdata" {
-				return filepath.SkipDir
-			}
+		if !info.IsDir() {
 			return nil
 		}
-		if !strings.HasSuffix(info.Name(), ".go") {
-			return nil
+		if info.Name() != "." &&
+			strings.HasPrefix(info.Name(), ".") {
+			return filepath.SkipDir
 		}
-		r, err := os.Open(pth)
+		switch info.Name() {
+		// Skip these special directories since "vendor"
+		// contains local copies of dependencies and
+		// "testdata" includes data files only used for
+		// testing that can be safely ignored.
+		case "vendor", "testdata":
+			return filepath.SkipDir
+		}
+
+		pkg, err := build.ImportDir(pth, build.ImportComment)
 		if err != nil {
+			if _, ok := err.(*build.NoGoError); ok {
+				return nil
+			}
 			return err
 		}
-		defer r.Close()
-		scanner := bufio.NewScanner(bufio.NewReader(r))
-		for scanner.Scan() {
-			line := scanner.Text()
-			fields := strings.Fields(line)
-			if len(fields) < 5 {
-				continue
-			}
-			if fields[0] == "//" || fields[0] == "/*" {
-				continue
-			}
-			if fields[0] != "package" {
-				return nil
-			}
-			if fields[2] != "/*" && fields[2] != "//" {
-				return nil
-			}
-			if fields[3] != "import" {
-				return nil
-			}
-			pth := fields[4]
-			if len(pth) < 3 {
-				return nil
-			}
-			if pth[0] != '"' ||
-				pth[len(pth)-1] != '"' {
-				return nil
-			}
-			importPath = pth[1 : len(pth)-1]
+		if pkg.ImportComment != "" {
+			importPath = pkg.ImportComment
+			log.Debugf("found import path from import comment: %s",
+				importPath)
 			return errFound
 		}
 		return nil
