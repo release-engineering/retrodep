@@ -91,7 +91,7 @@ func NewGoSource(pth string, excludeGlobs ...string) (*GoSource, error) {
 
 	// Always read glide.yaml because we need to know if there are
 	// replacement repositories.
-	ok, err := readGlideConf(src)
+	ok, err := loadGlideConf(src)
 	if err != nil {
 		return nil, err
 	}
@@ -139,10 +139,10 @@ func loadGodepsConf(src *GoSource) error {
 	return nil
 }
 
-// readGlideConf parses glide.yaml to extract the package name and the
+// loadGlideConf parses glide.yaml to extract the package name and the
 // import path repository replacements. It returns true if it parsed
 // successfully.
-func readGlideConf(src *GoSource) (bool, error) {
+func loadGlideConf(src *GoSource) (bool, error) {
 	conf := filepath.Join(src.Path, "glide.yaml")
 	if _, skip := src.excludes[conf]; skip {
 		return false, nil
