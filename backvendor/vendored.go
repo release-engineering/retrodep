@@ -91,7 +91,12 @@ func (src GoSource) VendoredProjects() (map[string]*RepoRoot, error) {
 		return nil, err
 	}
 
-	if _, err := os.Stat(search.vendor); err == nil {
+	_, err := os.Stat(search.vendor)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+	} else {
 		err = filepath.Walk(search.vendor, walkfn)
 		if err != nil {
 			return nil, err

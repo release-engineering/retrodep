@@ -122,7 +122,10 @@ func NewFileHashes(h Hasher, root string, excludes map[string]struct{}) (*FileHa
 			// format than handled here.  Can git-check-attr(1) help?
 			ga, err := os.Open(filepath.Join(path, ".gitattributes"))
 			if err != nil {
-				return nil
+				if os.IsNotExist(err) {
+					err = nil
+				}
+				return err
 			}
 			defer ga.Close()
 

@@ -76,13 +76,21 @@ func NewGoSource(pth string, excludeGlobs ...string) (*GoSource, error) {
 		return nil, err
 	}
 	_, err = os.Stat(filepath.Join(pth, "Godeps", "Godeps.json"))
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
 	src := &GoSource{
 		Path:      pth,
 		excludes:  excludes,
 		usesGodep: err == nil,
 	}
 
-	if !readGlideConf(src) {
+	ok, err := readGlideConf(src)
+	if err != nil {
+		return nil, err
+	}
+
+	if !ok {
 		if importPath, err := findImportComment(src); err == nil {
 			src.Package = importPath
 		} else if importPath, ok := importPathFromFilepath(pth); ok {
@@ -96,15 +104,18 @@ func NewGoSource(pth string, excludeGlobs ...string) (*GoSource, error) {
 // readGlideConf parses glide.yaml to extract the package name and the
 // import path repository replacements. It returns true if it parsed
 // successfully.
-func readGlideConf(src *GoSource) bool {
+func readGlideConf(src *GoSource) (bool, error) {
 	conf := filepath.Join(src.Path, "glide.yaml")
 	if _, skip := src.excludes[conf]; skip {
-		return false
+		return false, nil
 	}
 
 	glide, err := glide.LoadGlide(src.Path)
 	if err != nil {
-		return false
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "decoding %s", conf)
 	}
 
 	src.Package = glide.Package
@@ -112,10 +123,10 @@ func readGlideConf(src *GoSource) bool {
 	// if there is no vendor folder, the dependencies are flattened
 	_, err = os.Stat(filepath.Join(src.Path, "vendor"))
 	if os.IsNotExist(err) {
-		return true
+		return true, nil
 	}
 	if err != nil {
-		return false
+		return false, errors.Wrapf(err, "stat 'vendor' for %s", conf)
 	}
 
 	repoRoots := make(map[string]*RepoRoot)
@@ -144,7 +155,7 @@ func readGlideConf(src *GoSource) bool {
 	}
 
 	src.repoRoots = repoRoots
-	return true
+	return true, nil
 }
 
 // importPathFromFilepath attempts to use the project directory path to
