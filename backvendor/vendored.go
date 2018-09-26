@@ -379,7 +379,8 @@ func (src GoSource) DescribeProject(project *RepoRoot, root string) (*Reference,
 // control system which corresponds to the vendored copy of the
 // project.
 func (src GoSource) DescribeVendoredProject(project *RepoRoot) (*Reference, error) {
-	projectdir := filepath.Join(src.Vendor(), project.Root)
-	ref, err := src.DescribeProject(project, projectdir)
+	projRootImportPath := filepath.FromSlash(project.Root)
+	projDir := filepath.Join(src.Vendor(), projRootImportPath)
+	ref, err := src.DescribeProject(project, projDir)
 	return ref, err
 }
