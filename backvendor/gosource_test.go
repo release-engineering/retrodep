@@ -180,20 +180,30 @@ func TestGlideTrue(t *testing.T) {
 
 func TestImportPathFromFilepath(t *testing.T) {
 	tests := []struct {
+		name                 string
 		filePath, importPath string
 		ok                   bool
 	}{
 		{
+			"toplevel",
 			"/home/foo/github.com/release-engineering/backvendor",
 			"github.com/release-engineering/backvendor",
 			true,
 		},
 		{
+			"subdir",
+			"/home/foo/github.com/release-engineering/backvendor/backvendor",
+			"github.com/release-engineering/backvendor/backvendor",
+			true,
+		},
+		{
+			"trailing-slash",
 			"/home/foo/github.com/release-engineering/backvendor/",
 			"github.com/release-engineering/backvendor",
 			true,
 		},
 		{
+			"unknown",
 			"release-engineering/backvendor",
 			"",
 			false,
@@ -215,8 +225,8 @@ func TestImportPathFromFilepath(t *testing.T) {
 	for _, test := range tests {
 		importPath, ok := importPathFromFilepath(test.filePath)
 		if ok != test.ok {
-			t.Errorf("wrong ok value for %s: got _,%v, want _,%v",
-				test.filePath, ok, test.ok)
+			t.Errorf("%s: wrong ok value for %s: got _,%v, want _,%v",
+				test.name, test.filePath, ok, test.ok)
 			continue
 		}
 		if !ok {
@@ -224,8 +234,8 @@ func TestImportPathFromFilepath(t *testing.T) {
 		}
 
 		if importPath != test.importPath {
-			t.Errorf("wrong path for %s: got %q, want %q",
-				test.filePath, importPath, test.importPath)
+			t.Errorf("%s: wrong path for %s: got %q, want %q",
+				test.name, test.filePath, importPath, test.importPath)
 		}
 	}
 }

@@ -316,15 +316,15 @@ func loadGlideConf(src *GoSource) (bool, error) {
 
 // importPathFromFilepath attempts to use the project directory path to
 // infer its import path.
-func importPathFromFilepath(pth string) (string, bool) {
-	absPath, err := filepath.Abs(pth)
+func importPathFromFilepath(path string) (string, bool) {
+	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return "", false
 	}
 
 	// Skip leading '/'
-	pth = absPath[1:]
-	components := strings.Split(pth, string(filepath.Separator))
+	path = absPath[1:]
+	components := strings.Split(path, string(filepath.Separator))
 	if len(components) < 2 {
 		return "", false
 	}
@@ -335,10 +335,10 @@ func importPathFromFilepath(pth string) (string, bool) {
 			continue
 		}
 
-		pth := strings.Join(components[i:len(components)], "/")
-		repoRoot, err := vcs.RepoRootForImportPath(pth, false)
+		p := strings.Join(components[i:len(components)], "/")
+		_, err := vcs.RepoRootForImportPath(p, false)
 		if err == nil {
-			return repoRoot.Root, true
+			return p, true
 		}
 	}
 
