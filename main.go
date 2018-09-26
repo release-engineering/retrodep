@@ -170,8 +170,13 @@ func processArgs(args []string) *backvendor.GoSource {
 	}
 	logging.SetLevel(level, "backvendor")
 
-	excludes := readExcludeFile()
-	source, err := backvendor.NewGoSource(flag.Arg(0), excludes...)
+	excludeGlobs := readExcludeFile()
+	path := flag.Arg(0)
+	excludes, err := backvendor.FindExcludes(path, excludeGlobs)
+	if err != nil {
+		log.Fatal(err)
+	}
+	source, err := backvendor.NewGoSource(path, excludes)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -20,8 +20,44 @@ import (
 	"testing"
 )
 
+func TestFindExcludes(t *testing.T) {
+	type tcase struct {
+		dir   string
+		globs []string
+		exp   []string
+	}
+	tcases := []tcase{
+		tcase{
+			dir:   "testdata/gosource",
+			globs: nil,
+			exp:   []string{},
+		},
+
+		tcase{
+			dir:   "testdata/gosource",
+			globs: []string{"vendor*"},
+			exp:   []string{"testdata/gosource/vendor"},
+		},
+	}
+	for _, tc := range tcases {
+		excl, err := FindExcludes(tc.dir, tc.globs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(tc.exp) != len(excl) {
+			t.Errorf("wrong length: got %d, want %d", len(excl), len(tc.exp))
+		}
+		for i, e := range tc.exp {
+			if excl[i] != e {
+				t.Errorf("wrong value: got %v, want %v", excl, tc.exp)
+				break
+			}
+		}
+	}
+}
+
 func TestDirs(t *testing.T) {
-	src, err := NewGoSource("testdata/gosource")
+	src, err := NewGoSource("testdata/gosource", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +70,7 @@ func TestDirs(t *testing.T) {
 }
 
 func TestGodepFalse(t *testing.T) {
-	src, err := NewGoSource("testdata/gosource")
+	src, err := NewGoSource("testdata/gosource", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +80,7 @@ func TestGodepFalse(t *testing.T) {
 }
 
 func TestGodepTrue(t *testing.T) {
-	src, err := NewGoSource("testdata/godep")
+	src, err := NewGoSource("testdata/godep", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +95,7 @@ func TestGodepTrue(t *testing.T) {
 }
 
 func TestGlideFalse(t *testing.T) {
-	src, err := NewGoSource("testdata/godep")
+	src, err := NewGoSource("testdata/godep", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +105,7 @@ func TestGlideFalse(t *testing.T) {
 }
 
 func TestGlideTrue(t *testing.T) {
-	src, err := NewGoSource("testdata/glide")
+	src, err := NewGoSource("testdata/glide", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

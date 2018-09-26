@@ -20,7 +20,7 @@ import (
 )
 
 func TestVendoredProjects(t *testing.T) {
-	src, err := NewGoSource("testdata/gosource")
+	src, err := NewGoSource("testdata/gosource", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

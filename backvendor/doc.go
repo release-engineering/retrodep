@@ -23,7 +23,7 @@
 // methods return information about the top-level project and the
 // vendored projects it has.
 //
-//     src := backvendor.NewGoSource(path)
+//     src := backvendor.NewGoSource(path, nil)
 //     proj, perr := src.Project(importPath)
 //     vendored, verr := src.VendoredProjects()
 //

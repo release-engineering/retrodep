@@ -57,34 +57,39 @@ type GoSource struct {
 	usesGodep bool
 }
 
-func findExcludes(pth string, globs []string) (map[string]struct{}, error) {
-	excludes := make(map[string]struct{})
+// FindExcludes returns a slice of paths which match the provided
+// globs.
+func FindExcludes(path string, globs []string) ([]string, error) {
+	excludes := make([]string, 0)
 	for _, glob := range globs {
-		matches, err := filepath.Glob(filepath.Join(pth, glob))
+		matches, err := filepath.Glob(filepath.Join(path, glob))
 		if err != nil {
 			return nil, err
 		}
 		for _, match := range matches {
-			excludes[match] = struct{}{}
+			excludes = append(excludes, match)
 		}
 	}
 	return excludes, nil
 }
 
-func NewGoSource(pth string, excludeGlobs ...string) (*GoSource, error) {
-	excludes, err := findExcludes(pth, excludeGlobs)
-	if err != nil {
-		return nil, err
+// NewGoSource returns a *GoSource for the given path path. The paths
+// in excludes will not be considered when matching against the
+// upstream repository.
+func NewGoSource(path string, excludes []string) (*GoSource, error) {
+	excl := make(map[string]struct{})
+	for _, e := range excludes {
+		excl[e] = struct{}{}
 	}
 
 	src := &GoSource{
-		Path:     pth,
-		excludes: excludes,
+		Path:     path,
+		excludes: excl,
 	}
 
 	// Always read Godeps.json because we need to know whether
 	// godep is in use (if so, files are modified when vendored).
-	err = loadGodepsConf(src)
+	err := loadGodepsConf(src)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +104,7 @@ func NewGoSource(pth string, excludeGlobs ...string) (*GoSource, error) {
 	if !ok && src.Package == "" {
 		if importPath, err := findImportComment(src); err == nil {
 			src.Package = importPath
-		} else if importPath, ok := importPathFromFilepath(pth); ok {
+		} else if importPath, ok := importPathFromFilepath(path); ok {
 			src.Package = importPath
 		}
 	}
