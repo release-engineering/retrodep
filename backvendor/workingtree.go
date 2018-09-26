@@ -88,8 +88,8 @@ type WorkingTree interface {
 // interacting with the working tree. Other types build on this to
 // provide methods not handled by vcs.Cmd.
 type anyWorkingTree struct {
-	Source *GoSource
-	VCS    *vcs.Cmd
+	Dir string
+	VCS *vcs.Cmd
 }
 
 // NewWorkingTree creates a local checkout of the version control
@@ -105,15 +105,9 @@ func NewWorkingTree(project *RepoRoot) (WorkingTree, error) {
 		return nil, err
 	}
 
-	source, err := NewGoSource(dir)
-	if err != nil {
-		os.RemoveAll(dir)
-		return nil, err
-	}
-
 	wt := anyWorkingTree{
-		Source: source,
-		VCS:    project.VCS,
+		Dir: dir,
+		VCS: project.VCS,
 	}
 	switch project.VCS.Cmd {
 	case vcsGit:
@@ -128,17 +122,17 @@ func NewWorkingTree(project *RepoRoot) (WorkingTree, error) {
 
 // Close removes the local checkout.
 func (wt *anyWorkingTree) Close() error {
-	return os.RemoveAll(wt.Source.Path)
+	return os.RemoveAll(wt.Dir)
 }
 
 func (wt *anyWorkingTree) TagSync(tag string) error {
-	return wt.VCS.TagSync(wt.Source.Path, tag)
+	return wt.VCS.TagSync(wt.Dir, tag)
 }
 
 // VersionTags returns the tags that are parseable as semantic tags,
 // e.g. v1.1.0.
 func (wt *anyWorkingTree) VersionTags() ([]string, error) {
-	tags, err := wt.VCS.Tags(wt.Source.Path)
+	tags, err := wt.VCS.Tags(wt.Dir)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +161,7 @@ func (wt *anyWorkingTree) run(args ...string) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
 	p.Stdout = &buf
 	p.Stderr = &buf
-	p.Dir = wt.Source.Path
+	p.Dir = wt.Dir
 	err := p.Run()
 	return &buf, err
 }
@@ -237,7 +231,7 @@ func (wt *anyWorkingTree) StripImportComment(path string, w io.Writer) (bool, er
 	if !strings.HasSuffix(path, ".go") {
 		return false, nil
 	}
-	path = filepath.Join(wt.Source.Path, path)
+	path = filepath.Join(wt.Dir, path)
 	r, err := os.Open(path)
 	if err != nil {
 		return false, errors.Wrap(err, "StripImportComment")

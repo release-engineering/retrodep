@@ -23,14 +23,10 @@ import (
 )
 
 func TestStripImportCommentPackage(t *testing.T) {
-	src, err := NewGoSource("testdata/godep")
-	if err != nil {
-		t.Fatal(err)
-	}
 	wt := &gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: src,
-			VCS:    vcs.ByCmd("git"),
+			Dir: "testdata/godep",
+			VCS: vcs.ByCmd("git"),
 		},
 	}
 
@@ -49,14 +45,10 @@ func TestStripImportCommentPackage(t *testing.T) {
 }
 
 func TestStripImportCommentNewline(t *testing.T) {
-	src, err := NewGoSource("testdata/godep")
-	if err != nil {
-		t.Fatal(err)
-	}
 	wt := &gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: src,
-			VCS:    vcs.ByCmd("git"),
+			Dir: "testdata/godep",
+			VCS: vcs.ByCmd("git"),
 		},
 	}
 

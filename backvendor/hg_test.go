@@ -29,8 +29,8 @@ func TestHgLog(t *testing.T) {
 
 	h := hgWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsHg),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsHg),
 		},
 	}
 
@@ -59,8 +59,8 @@ func TestHgRevisions(t *testing.T) {
 
 	wt := hgWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsHg),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsHg),
 		},
 	}
 
@@ -107,8 +107,8 @@ func TestHgRevisionFromTag(t *testing.T) {
 
 	wt := hgWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsHg),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsHg),
 		},
 	}
 
@@ -139,8 +139,8 @@ func TestHgTimeFromRevision(t *testing.T) {
 
 	wt := hgWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsHg),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsHg),
 		},
 	}
 
@@ -173,8 +173,8 @@ func TestHgReachableTag(t *testing.T) {
 
 	wt := hgWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsHg),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsHg),
 		},
 	}
 
@@ -257,8 +257,8 @@ func TestHgErrors(t *testing.T) {
 
 	wt := hgWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsHg),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsHg),
 		},
 	}
 

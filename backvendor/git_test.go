@@ -29,8 +29,8 @@ func TestGitRevisions(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
@@ -61,8 +61,8 @@ func TestGitRevisionFromTag(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
@@ -82,8 +82,8 @@ func TestGitRevSync(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
@@ -98,8 +98,8 @@ func TestGitTimeFromRevision(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
@@ -123,8 +123,8 @@ func TestGitReachableTag(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
@@ -190,8 +190,8 @@ func TestGitFileHashesFromRef(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
@@ -240,8 +240,8 @@ func TestGitErrors(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
