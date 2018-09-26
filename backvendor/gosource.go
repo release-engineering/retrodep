@@ -77,6 +77,29 @@ func FindExcludes(path string, globs []string) ([]string, error) {
 // in excludes will not be considered when matching against the
 // upstream repository.
 func NewGoSource(path string, excludes []string) (*GoSource, error) {
+	// There has to be either:
+	// - a 'vendor' subdirectory, or
+	// - some '*.go' files with Go code in
+	// Otherwise there is nothing for us to do.
+	var vendorExists bool
+	st, err := os.Stat(filepath.Join(path, "vendor"))
+	if err == nil {
+		vendorExists = st.IsDir()
+	}
+	switch {
+	case vendorExists:
+		// There is a vendor directory. Nothing else to check.
+	case err == nil || os.IsNotExist(err):
+		// No vendor directory, check for Go source.
+		_, err := build.ImportDir(path, build.ImportComment)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		// Some other failure.
+		return nil, err
+	}
+
 	excl := make(map[string]struct{})
 	for _, e := range excludes {
 		excl[e] = struct{}{}
@@ -89,7 +112,7 @@ func NewGoSource(path string, excludes []string) (*GoSource, error) {
 
 	// Always read Godeps.json because we need to know whether
 	// godep is in use (if so, files are modified when vendored).
-	err := loadGodepsConf(src)
+	err = loadGodepsConf(src)
 	if err != nil {
 		return nil, err
 	}

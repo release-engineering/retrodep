@@ -56,6 +56,26 @@ func TestFindExcludes(t *testing.T) {
 	}
 }
 
+func TestNewGoSource(t *testing.T) {
+	type tcase struct {
+		path  string
+		expOk bool
+	}
+	tcases := []tcase{
+		tcase{"testdata/gosource", true},
+		tcase{"testdata/godep", true},
+		tcase{"testdata", false},
+	}
+	for _, tc := range tcases {
+		_, err := NewGoSource(tc.path, nil)
+		ok := err == nil
+		if ok != tc.expOk {
+			t.Errorf("%s: got %s, want ok:%t",
+				tc.path, err, tc.expOk)
+		}
+	}
+}
+
 func TestDirs(t *testing.T) {
 	src, err := NewGoSource("testdata/gosource", nil)
 	if err != nil {
