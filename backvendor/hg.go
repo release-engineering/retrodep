@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -141,7 +142,7 @@ func (h *hgWorkingTree) ReachableTag(rev string) (string, error) {
 
 // FileHashesFromRef returns the file hashes for the given tag or
 // revision ref.
-func (h *hgWorkingTree) FileHashesFromRef(ref string) (*FileHashes, error) {
+func (h *hgWorkingTree) FileHashesFromRef(ref, subPath string) (*FileHashes, error) {
 	hasher, ok := NewHasher(vcsHg)
 	if !ok {
 		return nil, ErrorUnknownVCS
@@ -153,11 +154,15 @@ func (h *hgWorkingTree) FileHashesFromRef(ref string) (*FileHashes, error) {
 	}
 	defer os.RemoveAll(dir)
 
-	args := []string{"archive", "-r", ref, "--type", "files", dir}
+	args := []string{"archive", "-r", ref, "--type", "files"}
+	if subPath != "" {
+		args = append(args, "--prefix", subPath)
+	}
+	args = append(args, dir)
 	buf, err := h.anyWorkingTree.run(args...)
 	if err != nil {
 		os.Stderr.Write(buf.Bytes())
 		return nil, err
 	}
-	return NewFileHashes(hasher, dir, nil)
+	return NewFileHashes(hasher, filepath.Join(dir, subPath), nil)
 }

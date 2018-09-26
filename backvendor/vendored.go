@@ -162,11 +162,11 @@ func updateHashesAfterStrip(hashes *FileHashes, wt WorkingTree, ref string, path
 	return anyChanged, nil
 }
 
-func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, refs []string) ([]string, error) {
+func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, subPath string, refs []string) ([]string, error) {
 	var paths []string
 	if strip {
-		for hash, _ := range hashes.hashes {
-			paths = append(paths, hash)
+		for path := range hashes.hashes {
+			paths = append(paths, filepath.Join(subPath, path))
 		}
 	}
 
@@ -197,7 +197,7 @@ func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, refs []string
 	matches := make([]string, 0)
 	for _, ref := range refs {
 		log.Debugf("%s: trying match", ref)
-		refHashes, err := wt.FileHashesFromRef(ref)
+		refHashes, err := wt.FileHashesFromRef(ref, subPath)
 		if err != nil {
 			if err == ErrorInvalidRef {
 				continue
@@ -260,26 +260,39 @@ func chooseBestTag(tags []string) string {
 }
 
 // DescribeProject attempts to identify the tag in the version control
-// system which corresponds to the project. Vendored files and files
-// whose names begin with "." are ignored.
-func (src GoSource) DescribeProject(project *RepoRoot, root string) (*Reference, error) {
+// system which corresponds to the project and subpath (the path
+// relative to the project's root), based on comparison with files in
+// dir. Vendored files and files whose names begin with "." are
+// ignored.
+func (src GoSource) DescribeProject(project *RepoRoot, subPath, dir string) (*Reference, error) {
 	wt, err := NewWorkingTree(project)
 	if err != nil {
 		return nil, err
 	}
 	defer wt.Close()
 
+	// Make a local copy of src.excludes we can add keys to
 	excludes := make(map[string]struct{})
 	for key := range src.excludes {
 		excludes[key] = struct{}{}
 	}
+
 	// Ignore vendor directory
-	excludes[filepath.Join(root, "vendor")] = struct{}{}
+	excludes[filepath.Join(dir, "vendor")] = struct{}{}
+
+	// Work out how to hash files ready for comparison
 	hasher, ok := NewHasher(project.VCS.Cmd)
 	if !ok {
 		return nil, ErrorUnknownVCS
 	}
-	hashes, err := NewFileHashes(hasher, root, excludes)
+
+	// Work out the sub-directory within the repository root to
+	// use for comparison.
+	projDir := filepath.Join(project.Root, subPath)
+	log.Debugf("describing %s compared to %s", dir, projDir)
+
+	// Compute the hashes of the local files
+	hashes, err := NewFileHashes(hasher, dir, excludes)
 	if err != nil {
 		return nil, err
 	}
@@ -297,11 +310,11 @@ func (src GoSource) DescribeProject(project *RepoRoot, root string) (*Reference,
 	// If godep is in use, strip import comments from the
 	// project's vendored files (but not files from the top-level
 	// project).
-	strip := src.usesGodep && root != src.Path
+	strip := src.usesGodep && dir != src.Path
 
 	// First try to match against a specific version, if specified
 	if project.Version != "" {
-		match, err := matchFromRefs(strip, hashes, wt, []string{project.Version})
+		match, err := matchFromRefs(strip, hashes, wt, subPath, []string{project.Version})
 		switch err {
 		case nil:
 			// Found a match
@@ -329,7 +342,7 @@ func (src GoSource) DescribeProject(project *RepoRoot, root string) (*Reference,
 		return nil, err
 	}
 
-	matches, err := matchFromRefs(strip, hashes, wt, tags)
+	matches, err := matchFromRefs(strip, hashes, wt, subPath, tags)
 	switch err {
 	case nil:
 		// Found a match
@@ -357,7 +370,7 @@ func (src GoSource) DescribeProject(project *RepoRoot, root string) (*Reference,
 		return nil, err
 	}
 
-	matches, err = matchFromRefs(strip, hashes, wt, revs)
+	matches, err = matchFromRefs(strip, hashes, wt, subPath, revs)
 	if err != nil {
 		return nil, err
 	}
@@ -381,6 +394,6 @@ func (src GoSource) DescribeProject(project *RepoRoot, root string) (*Reference,
 func (src GoSource) DescribeVendoredProject(project *RepoRoot) (*Reference, error) {
 	projRootImportPath := filepath.FromSlash(project.Root)
 	projDir := filepath.Join(src.Vendor(), projRootImportPath)
-	ref, err := src.DescribeProject(project, projDir)
+	ref, err := src.DescribeProject(project, "", projDir)
 	return ref, err
 }

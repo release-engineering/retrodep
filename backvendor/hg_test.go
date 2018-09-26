@@ -281,7 +281,7 @@ func TestHgErrors(t *testing.T) {
 	if _, ok := err.(*exec.ExitError); !ok {
 		t.Error("ReachableTag: hg failure was not reported")
 	}
-	_, err = wt.FileHashesFromRef("012345")
+	_, err = wt.FileHashesFromRef("012345", "")
 	if _, ok := err.(*exec.ExitError); !ok {
 		t.Error("FileHashesFromRef: hg failure was not reported")
 	}

@@ -23,8 +23,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type gitWorkingTree struct {
@@ -132,8 +135,12 @@ func (g *gitWorkingTree) ReachableTag(rev string) (string, error) {
 
 // FileHashesFromRef parses the output of 'git ls-tree -r' to
 // return the file hashes for the given tag or revision ref.
-func (g *gitWorkingTree) FileHashesFromRef(ref string) (*FileHashes, error) {
-	buf, err := g.anyWorkingTree.run("ls-tree", "-r", ref)
+func (g *gitWorkingTree) FileHashesFromRef(ref, subPath string) (*FileHashes, error) {
+	args := []string{"ls-tree", "-r", ref}
+	if subPath != "" {
+		args = append(args, subPath)
+	}
+	buf, err := g.anyWorkingTree.run(args...)
 	if err != nil {
 		if strings.HasPrefix(buf.String(), "fatal: Not a valid object name ") {
 			// This is a branch name, not a tag name
@@ -152,7 +159,16 @@ func (g *gitWorkingTree) FileHashesFromRef(ref string) (*FileHashes, error) {
 		if len(ts) != 2 {
 			return nil, fmt.Errorf("expected TAB: %s", line)
 		}
-		filename := ts[1]
+		var filename string
+		if subPath == "" {
+			filename = ts[1]
+		} else {
+			filename, err = filepath.Rel(subPath, ts[1])
+			if err != nil {
+				return nil, errors.Wrapf(err, "Rel(%q, %q)",
+					subPath, ts[1])
+			}
+		}
 		fields := strings.Fields(ts[0])
 		if len(fields) != 3 {
 			return nil, fmt.Errorf("expected 3 fields: %s", ts[0])

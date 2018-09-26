@@ -77,24 +77,27 @@ func TestNewGoSource(t *testing.T) {
 }
 
 func TestFindGoSources(t *testing.T) {
+	type exp struct {
+		path, subpath string
+	}
 	type tcase struct {
 		name string
 		path string
-		exp  []string
+		exp  []exp
 	}
 	tcases := []tcase{
 		tcase{
 			name: "single",
 			path: "testdata/gosource",
-			exp:  []string{"testdata/gosource"},
+			exp:  []exp{{"testdata/gosource", ""}},
 		},
 
 		tcase{
 			name: "multi",
 			path: "testdata/multi",
-			exp: []string{
-				"testdata/multi/abc",
-				"testdata/multi/def",
+			exp: []exp{
+				{"testdata/multi/abc", "abc"},
+				{"testdata/multi/def", "def"},
 			},
 		},
 	}
@@ -113,8 +116,11 @@ func TestFindGoSources(t *testing.T) {
 			continue
 		}
 		for i, src := range tc.exp {
-			if src != srcs[i].Path {
-				t.Errorf("%s: got %v, want %v", tc.name, srcs, tc.exp)
+			if src.path != srcs[i].Path {
+				t.Errorf("%s: Path: got %q, want %q", tc.name, srcs[i].Path, src.path)
+			}
+			if src.subpath != srcs[i].SubPath {
+				t.Errorf("%s: SubPath: got %q, want %q", tc.name, srcs[i].SubPath, src.subpath)
 			}
 		}
 	}

@@ -66,8 +66,10 @@ type WorkingTree interface {
 	Revisions() ([]string, error)
 
 	// FileHashesFromRef returns the file hashes for the tag or
-	// revision ref.
-	FileHashesFromRef(ref string) (*FileHashes, error)
+	// revision ref. The returned FileHashes will be relative to
+	// the subPath, which is itself relative to the repository
+	// root.
+	FileHashesFromRef(ref, subPath string) (*FileHashes, error)
 
 	// RevSync syncs the repo to the named revision.
 	RevSync(rev string) error

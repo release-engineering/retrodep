@@ -41,8 +41,12 @@ var errorNoImportPathComment = errors.New("no import path comment")
 
 // GoSource represents a filesystem tree containing Go source code.
 type GoSource struct {
-	// Path to the top-level package
+	// Path is the filepath to the top-level package
 	Path string
+
+	// SubPath is the top-level filepath relative to the root of
+	// the repository, or "" if they are the same.
+	SubPath string
 
 	// Package is any import path in this project
 	Package string
@@ -143,6 +147,11 @@ func FindGoSources(path string, excludeGlobs []string) ([]*GoSource, error) {
 			if _, ok := err.(*build.NoGoError); ok {
 				return nil
 			}
+			return err
+		}
+
+		err = src.SetSubPath(path)
+		if err != nil {
 			return err
 		}
 
@@ -402,6 +411,17 @@ func findImportComment(src *GoSource) (string, error) {
 		err = errorNoImportPathComment
 	}
 	return importPath, err
+}
+
+// SetSubPath updates the GoSource.SubPath string to be relative to
+// the given root.
+func (src *GoSource) SetSubPath(root string) error {
+	rel, err := filepath.Rel(root, src.Path)
+	if err != nil {
+		return errors.Wrapf(err, "Rel(%q, %q)", root, src.Path)
+	}
+	src.SubPath = rel
+	return nil
 }
 
 // Vendor returns the path to the vendored source code.

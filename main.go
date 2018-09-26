@@ -73,7 +73,7 @@ func showTopLevel(src *backvendor.GoSource) {
 		log.Fatalf("%s: %s", src.Path, err)
 	}
 
-	project, err := src.DescribeProject(main, src.Path)
+	project, err := src.DescribeProject(main, src.SubPath, src.Path)
 	switch err {
 	case backvendor.ErrorVersionNotFound:
 		displayUnknown("*" + main.Root)
