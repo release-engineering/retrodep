@@ -131,7 +131,7 @@ func readExcludeFile() []string {
 	return excludes
 }
 
-func processArgs(args []string) *backvendor.GoSource {
+func processArgs(args []string) []*backvendor.GoSource {
 	progName := filepath.Base(args[0])
 
 	// Stop the default behaviour of printing errors and exiting.
@@ -172,23 +172,21 @@ func processArgs(args []string) *backvendor.GoSource {
 
 	excludeGlobs := readExcludeFile()
 	path := flag.Arg(0)
-	excludes, err := backvendor.FindExcludes(path, excludeGlobs)
-	if err != nil {
-		log.Fatal(err)
-	}
-	source, err := backvendor.NewGoSource(path, excludes)
+	sources, err := backvendor.FindGoSources(path, excludeGlobs)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return source
+	return sources
 }
 
 func main() {
-	src := processArgs(os.Args)
-	showTopLevel(src)
-	if *depsFlag {
-		showVendored(src)
+	srcs := processArgs(os.Args)
+	for _, src := range srcs {
+		showTopLevel(src)
+		if *depsFlag {
+			showVendored(src)
+		}
 	}
 
 	if errorShown {

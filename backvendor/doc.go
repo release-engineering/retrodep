@@ -19,18 +19,24 @@
 // from.
 //
 // A GoSource represents a filesystem tree containing Go source
-// code. Create it using NewGoSource. The Project and VendoredProjects
-// methods return information about the top-level project and the
-// vendored projects it has.
+// code. Create it using NewGoSource or FindGoSources. The Project and
+// VendoredProjects methods return information about the top-level
+// project and the vendored projects it has.
 //
 //     src := backvendor.NewGoSource(path, nil)
 //     proj, perr := src.Project(importPath)
 //     vendored, verr := src.VendoredProjects()
 //
-// Both of these methods use RepoRoot (from golang.org/x/tools/go/vcs)
-// to describe the projects.
+// Both of these methods use RepoPath to describe the projects. If a
+// glide configuration file is found, Version will be filled in for
+// each vendored dependency.
 //
-// The DescribeProject function takes a RepoRoot and returns a
+// The FindGoSources function looks for Go source code in the provided
+// path. If it is not found there, the immediate subdirectories are
+// searched. This function allows for repositories which are
+// collections of independently-vendored projects.
+//
+// The DescribeProject function takes a RepoPath and returns a
 // Representation, indicating the upstream version of the project or
 // vendored project, e.g.
 //

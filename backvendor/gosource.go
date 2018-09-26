@@ -73,6 +73,97 @@ func FindExcludes(path string, globs []string) ([]string, error) {
 	return excludes, nil
 }
 
+// FindGoSources looks for top-level projects at path. If path is itself
+// a top-level project, the returned slice contains a single *GoSource
+// for that project; otherwise immediate sub-directories are tested.
+// Files matching globs in excludeGlobs will not be considered when
+// matching against upstream repositories.
+func FindGoSources(path string, excludeGlobs []string) ([]*GoSource, error) {
+	// Try at the top-level.
+	excludes, err := FindExcludes(path, excludeGlobs)
+	if err != nil {
+		return nil, err
+	}
+	src, terr := NewGoSource(path, excludes)
+	if terr == nil {
+		log.Debugf("found project at top-level: %s", path)
+		return []*GoSource{src}, nil
+	}
+
+	// Convert the exclusions list to absolute paths and make a
+	// map for fast look-up.
+	excl := make(map[string]struct{})
+	for _, e := range excludes {
+		a, err := filepath.Abs(e)
+		if err != nil {
+			return nil, err
+		}
+		excl[a] = struct{}{}
+	}
+
+	// Work out the absolute path we were given, for constructing
+	// keys to look up in excl
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Abs(%q)", path)
+	}
+
+	// Look in sub-directories.
+	subDirStart := len(abs) + 1
+	srcs := make([]*GoSource, 0)
+	search := func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Ignore the top-level directory itself.
+		if p == abs {
+			return nil
+		}
+
+		// Only consider directories.
+		if !info.IsDir() {
+			return nil
+		}
+
+		// We only want to consider sub-directories one level
+		// down from the top-level.
+		if strings.ContainsRune(p[subDirStart:], filepath.Separator) {
+			return filepath.SkipDir
+		}
+
+		// Check if this is excluded from consideration
+		if _, ok := excl[p]; ok {
+			return filepath.SkipDir
+		}
+
+		r := filepath.Join(path, p[subDirStart:])
+		src, err := NewGoSource(r, excludes)
+		if err != nil {
+			if _, ok := err.(*build.NoGoError); ok {
+				return nil
+			}
+			return err
+		}
+
+		srcs = append(srcs, src)
+		log.Debugf("found project in subdir: %s", r)
+		return nil
+	}
+
+	err = filepath.Walk(abs, search)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(srcs) == 0 {
+		// Return the original error from the top-level check.
+		return nil, terr
+	}
+
+	return srcs, nil
+}
+
 // NewGoSource returns a *GoSource for the given path path. The paths
 // in excludes will not be considered when matching against the
 // upstream repository.

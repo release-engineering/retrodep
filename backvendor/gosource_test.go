@@ -76,6 +76,50 @@ func TestNewGoSource(t *testing.T) {
 	}
 }
 
+func TestFindGoSources(t *testing.T) {
+	type tcase struct {
+		name string
+		path string
+		exp  []string
+	}
+	tcases := []tcase{
+		tcase{
+			name: "single",
+			path: "testdata/gosource",
+			exp:  []string{"testdata/gosource"},
+		},
+
+		tcase{
+			name: "multi",
+			path: "testdata/multi",
+			exp: []string{
+				"testdata/multi/abc",
+				"testdata/multi/def",
+			},
+		},
+	}
+	for _, tc := range tcases {
+		srcs, err := FindGoSources(tc.path, nil)
+		if err != nil {
+			t.Errorf("%s: %s", tc.name, err)
+			continue
+		}
+		if srcs == nil {
+			t.Errorf("%s: srcs is nil", tc.name)
+			continue
+		}
+		if len(srcs) != len(tc.exp) {
+			t.Errorf("%s: got %d sources, want %d", tc.name, len(srcs), len(tc.exp))
+			continue
+		}
+		for i, src := range tc.exp {
+			if src != srcs[i].Path {
+				t.Errorf("%s: got %v, want %v", tc.name, srcs, tc.exp)
+			}
+		}
+	}
+}
+
 func TestDirs(t *testing.T) {
 	src, err := NewGoSource("testdata/gosource", nil)
 	if err != nil {
