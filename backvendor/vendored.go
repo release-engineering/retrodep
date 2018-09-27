@@ -39,7 +39,7 @@ type vendoredSearch struct {
 	lastdir string
 
 	// Vendored packages, indexed by Root
-	vendored map[string]*RepoRoot
+	vendored map[string]*RepoPath
 }
 
 func (s *vendoredSearch) inLastDir(pth string) bool {
@@ -49,7 +49,7 @@ func (s *vendoredSearch) inLastDir(pth string) bool {
 func processVendoredSource(src *GoSource, search *vendoredSearch, pth string) error {
 	// For .go source files, see which directory they are in
 	thisImport := filepath.Dir(pth[1+len(search.vendor):])
-	repoRoot, err := src.RepoRootForImportPath(thisImport)
+	repoRoot, err := src.RepoPathForImportPath(thisImport)
 	if err != nil {
 		return err
 	}
@@ -62,10 +62,10 @@ func processVendoredSource(src *GoSource, search *vendoredSearch, pth string) er
 
 // VendoredProjects return a map of project import names to information
 // about those projects, including which version control system they use.
-func (src GoSource) VendoredProjects() (map[string]*RepoRoot, error) {
+func (src GoSource) VendoredProjects() (map[string]*RepoPath, error) {
 	search := vendoredSearch{
 		vendor:   src.Vendor(),
-		vendored: make(map[string]*RepoRoot),
+		vendored: make(map[string]*RepoPath),
 	}
 	walkfn := func(pth string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -260,12 +260,11 @@ func chooseBestTag(tags []string) string {
 }
 
 // DescribeProject attempts to identify the tag in the version control
-// system which corresponds to the project and subpath (the path
-// relative to the project's root), based on comparison with files in
-// dir. Vendored files and files whose names begin with "." are
-// ignored.
-func (src GoSource) DescribeProject(project *RepoRoot, subPath, dir string) (*Reference, error) {
-	wt, err := NewWorkingTree(project)
+// system which corresponds to the project, based on comparison with
+// files in dir. Vendored files and files whose names begin with "."
+// are ignored.
+func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, error) {
+	wt, err := NewWorkingTree(&project.RepoRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -288,6 +287,7 @@ func (src GoSource) DescribeProject(project *RepoRoot, subPath, dir string) (*Re
 
 	// Work out the sub-directory within the repository root to
 	// use for comparison.
+	subPath := project.SubPath
 	projDir := filepath.Join(project.Root, subPath)
 	log.Debugf("describing %s compared to %s", dir, projDir)
 
@@ -391,9 +391,9 @@ func (src GoSource) DescribeProject(project *RepoRoot, subPath, dir string) (*Re
 // DescribeVendoredProject attempts to identify the tag in the version
 // control system which corresponds to the vendored copy of the
 // project.
-func (src GoSource) DescribeVendoredProject(project *RepoRoot) (*Reference, error) {
+func (src GoSource) DescribeVendoredProject(project *RepoPath) (*Reference, error) {
 	projRootImportPath := filepath.FromSlash(project.Root)
 	projDir := filepath.Join(src.Vendor(), projRootImportPath)
-	ref, err := src.DescribeProject(project, "", projDir)
+	ref, err := src.DescribeProject(project, projDir)
 	return ref, err
 }

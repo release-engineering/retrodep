@@ -96,7 +96,7 @@ type anyWorkingTree struct {
 
 // NewWorkingTree creates a local checkout of the version control
 // system for a Go project.
-func NewWorkingTree(project *RepoRoot) (WorkingTree, error) {
+func NewWorkingTree(project *vcs.RepoRoot) (WorkingTree, error) {
 	dir, err := ioutil.TempDir("", "backvendor.")
 	if err != nil {
 		return nil, err

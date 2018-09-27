@@ -18,6 +18,8 @@ package backvendor
 import (
 	"os"
 	"testing"
+
+	"golang.org/x/tools/go/vcs"
 )
 
 func TestFindExcludes(t *testing.T) {
@@ -122,6 +124,57 @@ func TestFindGoSources(t *testing.T) {
 			if src.subpath != srcs[i].SubPath {
 				t.Errorf("%s: SubPath: got %q, want %q", tc.name, srcs[i].SubPath, src.subpath)
 			}
+		}
+	}
+}
+
+func TestProject(t *testing.T) {
+	type tcase struct {
+		name       string
+		importPath string
+		root       string
+		expSubPath string
+	}
+	tcases := []tcase{
+		tcase{
+			name:       "trivial",
+			importPath: "example.com/foo",
+			root:       "example.com/foo",
+			expSubPath: "",
+		},
+
+		tcase{
+			name:       "subdir",
+			importPath: "example.com/foo/bar",
+			root:       "example.com/foo",
+			expSubPath: "bar",
+		},
+	}
+	src, err := NewGoSource("testdata/gosource", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Reset vcsRepoRootForImportPath after this test.
+	defer func() {
+		vcsRepoRootForImportPath = vcs.RepoRootForImportPath
+	}()
+
+	for _, tc := range tcases {
+		vcsRepoRootForImportPath = func(importPath string, _ bool) (*vcs.RepoRoot, error) {
+			return &vcs.RepoRoot{
+				Root: tc.root,
+			}, nil
+		}
+
+		repoPath, err := src.Project(tc.importPath)
+		if err != nil {
+			t.Errorf("%s: %s", tc.name, err)
+			continue
+		}
+		if repoPath.SubPath != tc.expSubPath {
+			t.Errorf("%s: SubPath: want %q, got %q", tc.name, repoPath.SubPath,
+				tc.expSubPath)
 		}
 	}
 }

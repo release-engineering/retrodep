@@ -17,6 +17,7 @@ package backvendor // import "github.com/release-engineering/backvendor/backvend
 
 import (
 	"encoding/json"
+	"fmt"
 	"go/build"
 	"os"
 	"path"
@@ -30,8 +31,14 @@ import (
 	"github.com/release-engineering/backvendor/backvendor/glide"
 )
 
-type RepoRoot struct {
+var vcsRepoRootForImportPath = vcs.RepoRootForImportPath
+
+type RepoPath struct {
 	vcs.RepoRoot
+
+	// SubPath is the top-level filepath relative to the root of
+	// the repository, or "" if they are the same.
+	SubPath string
 
 	Version string
 }
@@ -51,8 +58,8 @@ type GoSource struct {
 	// Package is any import path in this project
 	Package string
 
-	// repoRoots maps apparent import paths to actual repositories
-	repoRoots map[string]*RepoRoot
+	// repoPaths maps apparent import paths to actual repositories
+	repoPaths map[string]*RepoPath
 
 	// excludes is a map of paths to ignore in this project
 	excludes map[string]struct{}
@@ -296,7 +303,7 @@ func loadGlideConf(src *GoSource) (bool, error) {
 		return false, errors.Wrapf(err, "stat 'vendor' for %s", conf)
 	}
 
-	repoRoots := make(map[string]*RepoRoot)
+	repoPaths := make(map[string]*RepoPath)
 	for _, imp := range glide.Imports {
 		theVcs := vcs.ByCmd(vcsGit) // default to git
 		if imp.Repo == "" {
@@ -309,7 +316,7 @@ func loadGlideConf(src *GoSource) (bool, error) {
 			theVcs = root.VCS
 		}
 
-		repoRoots[imp.Name] = &RepoRoot{
+		repoPaths[imp.Name] = &RepoPath{
 			RepoRoot: vcs.RepoRoot{
 				VCS:  theVcs,
 				Repo: imp.Repo,
@@ -319,7 +326,7 @@ func loadGlideConf(src *GoSource) (bool, error) {
 		}
 	}
 
-	src.repoRoots = repoRoots
+	src.repoPaths = repoPaths
 	return true, nil
 }
 
@@ -429,10 +436,11 @@ func (src GoSource) Vendor() string {
 	return filepath.Join(src.Path, "vendor")
 }
 
-// Project returns information about the project given its import
+// Project returns information about the project's repository, as well
+// as the project's path within the repository, given its import
 // path. If importPath is "" it is deduced from import comments, if
 // available.
-func (src GoSource) Project(importPath string) (*RepoRoot, error) {
+func (src GoSource) Project(importPath string) (*RepoPath, error) {
 	if importPath == "" {
 		importPath = src.Package
 		if importPath == "" {
@@ -440,15 +448,34 @@ func (src GoSource) Project(importPath string) (*RepoRoot, error) {
 		}
 	}
 
-	repoRoot, err := vcs.RepoRootForImportPath(importPath, false)
-	return &RepoRoot{RepoRoot: *repoRoot}, err
+	repoRoot, err := vcsRepoRootForImportPath(importPath, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Work out root path
+	r := repoRoot.Root
+	var subPath string
+	switch {
+	case importPath == r:
+		// Sub path is ""
+	case !strings.HasPrefix(importPath, r) || importPath[len(r)] != '/':
+		return nil, fmt.Errorf("expected prefix of %s: %s", importPath, r)
+	default:
+		subPath = importPath[len(r)+1:]
+	}
+
+	return &RepoPath{
+		RepoRoot: *repoRoot,
+		SubPath:  subPath,
+	}, err
 }
 
-func (src GoSource) RepoRootForImportPath(importPath string) (*RepoRoot, error) {
+func (src GoSource) RepoPathForImportPath(importPath string) (*RepoPath, error) {
 	// First look up replacements
 	pth := importPath
 	for {
-		repl, ok := src.repoRoots[pth]
+		repl, ok := src.repoPaths[pth]
 		if ok {
 			// Found a replacement repo
 			return repl, nil
@@ -471,9 +498,9 @@ func (src GoSource) RepoRootForImportPath(importPath string) (*RepoRoot, error) 
 		importPath = path.Dir(importPath[:u])
 		r, nerr := vcs.RepoRootForImportPath(importPath, false)
 		if nerr == nil {
-			return &RepoRoot{RepoRoot: *r}, nil
+			return &RepoPath{RepoRoot: *r}, nil
 		}
 	}
 
-	return &RepoRoot{RepoRoot: *r}, err
+	return &RepoPath{RepoRoot: *r}, err
 }
