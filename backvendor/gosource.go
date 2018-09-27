@@ -170,6 +170,7 @@ func loadGlideConf(src *GoSource) (bool, error) {
 
 	repoRoots := make(map[string]*RepoRoot)
 	for _, imp := range glide.Imports {
+		theVcs := vcs.ByCmd(vcsGit) // default to git
 		if imp.Repo == "" {
 			root, err := vcs.RepoRootForImportPath(imp.Name, false)
 			if err != nil {
@@ -177,15 +178,12 @@ func loadGlideConf(src *GoSource) (bool, error) {
 				continue
 			}
 			imp.Repo = root.Repo
-			if root.VCS.Cmd != "git" {
-				log.Infof("Skipping %v, not a git repository : %v", imp.Name, root.VCS.Cmd)
-				continue
-			}
+			theVcs = root.VCS
 		}
 
 		repoRoots[imp.Name] = &RepoRoot{
 			RepoRoot: vcs.RepoRoot{
-				VCS:  vcs.ByCmd(vcsGit),
+				VCS:  theVcs,
 				Repo: imp.Repo,
 				Root: imp.Name,
 			},
