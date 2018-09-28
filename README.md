@@ -99,7 +99,7 @@ The vendor directory is assumed to be complete.
 
 Original source code is assumed to be available.
 
-Only git repositories are currently supported, and a working 'git' is assumed to be available.
+Only git and repositories are currently supported, and working 'git' and 'hg' executables are assumed to be available.
 
 Non-Go code is not considered, e.g. binary-only packages, or CGo.
 
