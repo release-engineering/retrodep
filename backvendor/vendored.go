@@ -48,15 +48,20 @@ func (s *vendoredSearch) inLastDir(pth string) bool {
 
 func processVendoredSource(src *GoSource, search *vendoredSearch, pth string) error {
 	// For .go source files, see which directory they are in
-	thisImport := filepath.Dir(pth[1+len(search.vendor):])
-	repoRoot, err := src.RepoPathForImportPath(thisImport)
+	rel, err := filepath.Rel(search.vendor, pth)
+	if err != nil {
+		return err
+	}
+	thisImport := filepath.ToSlash(filepath.Dir(rel))
+	repoPath, err := src.RepoPathForImportPath(thisImport)
 	if err != nil {
 		return err
 	}
 
 	// The project name is relative to the vendor dir
-	search.vendored[repoRoot.Root] = repoRoot
-	search.lastdir = filepath.Join(search.vendor, repoRoot.Root)
+	search.vendored[repoPath.Root] = repoPath
+	search.lastdir = filepath.Join(search.vendor,
+		filepath.FromSlash(repoPath.Root))
 	return nil
 }
 
