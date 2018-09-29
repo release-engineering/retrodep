@@ -302,7 +302,10 @@ func (src GoSource) Project(importPath string) (*RepoRoot, error) {
 	}
 
 	repoRoot, err := vcs.RepoRootForImportPath(importPath, false)
-	return &RepoRoot{RepoRoot: *repoRoot}, err
+	if err != nil {
+		return nil, err
+	}
+	return &RepoRoot{RepoRoot: *repoRoot}, nil
 }
 
 func (src GoSource) RepoRootForImportPath(importPath string) (*RepoRoot, error) {
