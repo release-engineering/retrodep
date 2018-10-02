@@ -31,6 +31,8 @@ usage: backvendor [OPTION]... PATH
         print help
   -importpath string
         top-level import path
+  -template string
+        go template to use for output with Rev, Tag and Ver
 ```
 
 In many cases backvendor can work out the import path for the top-level project. In those cases, simply supply the directory name to examine:
