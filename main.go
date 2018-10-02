@@ -49,14 +49,10 @@ func displayUnknown(name string) {
 
 func display(name string, ref *backvendor.Reference) {
 	fmt.Print(name)
-	if ref.Rev != "" {
-		fmt.Print("@", ref.Rev)
-	}
 	if ref.Tag != "" {
-		fmt.Print(" =", ref.Tag)
-	}
-	if ref.Ver != "" {
-		fmt.Print(" ~", ref.Ver)
+		fmt.Print(":", ref.Tag)
+	} else if ref.Ver != "" {
+		fmt.Print(":", ref.Ver)
 	}
 	fmt.Print("\n")
 }
