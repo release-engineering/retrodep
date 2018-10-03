@@ -61,19 +61,29 @@ func TestFindExcludes(t *testing.T) {
 func TestNewGoSource(t *testing.T) {
 	type tcase struct {
 		path  string
+		pkg   string
 		expOk bool
 	}
 	tcases := []tcase{
-		tcase{"testdata/gosource", true},
-		tcase{"testdata/godep", true},
-		tcase{"testdata", false},
+		tcase{"testdata/gosource", "", true},
+		tcase{"testdata/godep", "example.com/godep", true},
+		tcase{"testdata", "", false},
 	}
 	for _, tc := range tcases {
-		_, err := NewGoSource(tc.path, nil)
+		s, err := NewGoSource(tc.path, nil)
 		ok := err == nil
 		if ok != tc.expOk {
 			t.Errorf("%s: got %s, want ok:%t",
 				tc.path, err, tc.expOk)
+		}
+
+		if err != nil {
+			continue
+		}
+
+		if s.Package != tc.pkg {
+			t.Errorf("%s: got package %q, want %q",
+				tc.path, s.Package, tc.pkg)
 		}
 	}
 }
