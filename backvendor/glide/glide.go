@@ -1,9 +1,10 @@
 package glide
 
 import (
-	"gopkg.in/yaml.v2"
 	"os"
 	"path/filepath"
+
+	"gopkg.in/yaml.v2"
 )
 
 type glideLock struct {
@@ -29,8 +30,9 @@ type Glide struct {
 	Imports []Import
 }
 
-// LoadGlide tries to load glide.lock and glide.conf and extract import information.
-// In case no glide.lock is present, it will use the import information from glide.yaml.
+// LoadGlide tries to load glide.lock and glide.yaml and extract
+// import information.  In case no glide.lock is present, it will use
+// the import information from glide.yaml.
 func LoadGlide(projectRoot string) (*Glide, error) {
 	lockImports := []Import{}
 	lockFile, err := os.Open(filepath.Join(projectRoot, "glide.lock"))
