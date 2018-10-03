@@ -314,19 +314,21 @@ func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, 
 
 	// First try to match against a specific version, if specified
 	if project.Version != "" {
-		match, err := matchFromRefs(strip, hashes, wt, subPath, []string{project.Version})
+		matches, err := matchFromRefs(strip, hashes, wt,
+			subPath, []string{project.Version})
 		switch err {
 		case nil:
 			// Found a match
-			log.Debugf("Found match for %v which matches dependency management version", match)
-			rev, err := PseudoVersion(wt, match[0])
+			match := matches[0]
+			log.Debugf("Found match for %q which matches dependency management version", match)
+			ver, err := PseudoVersion(wt, match)
 			if err != nil {
 				return nil, err
 			}
 
 			return &Reference{
-				Rev: rev,
-				Ver: match[0],
+				Rev: match,
+				Ver: ver,
 			}, nil
 		case ErrorVersionNotFound:
 			// No match, carry on
