@@ -346,6 +346,13 @@ func importPathFromFilepath(path string) (string, bool) {
 	}
 
 	for i := len(components) - 2; i >= 0; i -= 1 {
+		// Avoid false positives like:
+		// github.com/release-engineering/backvendor/backvendor/testdata/gosource
+		switch components[i] {
+		case "testdata", "vendor":
+			return "", false
+		}
+
 		if strings.Index(components[i], ".") == -1 {
 			// Not a hostname
 			continue
