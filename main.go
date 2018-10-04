@@ -36,6 +36,7 @@ var importPath = flag.String("importpath", "", "top-level import path")
 var depsFlag = flag.Bool("deps", true, "show vendored dependencies")
 var excludeFrom = flag.String("exclude-from", "", "ignore directory entries matching globs in `exclusions`")
 var debugFlag = flag.Bool("debug", false, "show debugging output")
+var template = flag.String("template", "", "go template to use for output with Rev, Tag and Ver")
 
 var errorShown = false
 
@@ -47,18 +48,18 @@ func displayUnknown(name string) {
 	}
 }
 
-func display(name string, ref *backvendor.Reference) {
-	fmt.Print(name)
-	if ref.Rev != "" {
-		fmt.Print("@", ref.Rev)
+func display(template string, name string, ref *backvendor.Reference) {
+	var builder strings.Builder
+	builder.WriteString(name)
+	var tmpl, err = backvendor.Display(template)
+	if err != nil {
+		log.Fatalf("Error parsing supplied template. %s ", err)
 	}
-	if ref.Tag != "" {
-		fmt.Print(" =", ref.Tag)
+	err = tmpl.Execute(&builder, ref)
+	if err != nil {
+		log.Fatalf("Error generating output. %s ", err)
 	}
-	if ref.Ver != "" {
-		fmt.Print(" ~", ref.Ver)
-	}
-	fmt.Print("\n")
+	fmt.Println(builder.String())
 }
 
 func showTopLevel(src *backvendor.GoSource) {
@@ -78,7 +79,7 @@ func showTopLevel(src *backvendor.GoSource) {
 	case backvendor.ErrorVersionNotFound:
 		displayUnknown("*" + main.Root)
 	case nil:
-		display("*"+main.Root, project)
+		display(*template, "*"+main.Root, project)
 	default:
 		log.Fatalf("%s: %s", src.Path, err)
 	}
@@ -105,7 +106,7 @@ func showVendored(src *backvendor.GoSource) {
 		case backvendor.ErrorVersionNotFound:
 			displayUnknown(project.Root)
 		case nil:
-			display(project.Root, vp)
+			display(*template, project.Root, vp)
 		default:
 			log.Fatalf("%s: %s\n", project.Root, err)
 		}
