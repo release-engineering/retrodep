@@ -53,10 +53,12 @@ func display(template string, name string, ref *backvendor.Reference) {
 	builder.WriteString(name)
 	var tmpl, err = backvendor.Display(template)
 	if err != nil {
-		log.Warningf("Error parsing supplied template, using default. %s ", err)
-		tmpl, err = backvendor.Display("")
+		log.Fatalf("Error parsing supplied template. %s ", err)
 	}
-	tmpl.Execute(&builder, ref)
+	err = tmpl.Execute(&builder, ref)
+	if err != nil {
+		log.Fatalf("Error generating output. %s ", err)
+	}
 	fmt.Println(builder.String())
 }
 
