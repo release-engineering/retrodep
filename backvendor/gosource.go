@@ -55,7 +55,7 @@ type GoSource struct {
 	// the repository, or "" if they are the same.
 	SubPath string
 
-	// Package is any import path in this project
+	// Package is the import path for the top-level package
 	Package string
 
 	// repoPaths maps apparent import paths to actual repositories
@@ -376,8 +376,8 @@ func findImportComment(src *GoSource) (string, error) {
 	// be updated by the 'search' closure, below.
 	var importPath string
 
-	search := func(pth string, info os.FileInfo, err error) error {
-		if _, skip := src.excludes[pth]; skip {
+	search := func(path string, info os.FileInfo, err error) error {
+		if _, skip := src.excludes[path]; skip {
 			if info.IsDir() {
 				return filepath.SkipDir
 			}
@@ -402,7 +402,7 @@ func findImportComment(src *GoSource) (string, error) {
 			return filepath.SkipDir
 		}
 
-		pkg, err := build.ImportDir(pth, build.ImportComment)
+		pkg, err := build.ImportDir(path, build.ImportComment)
 		if err != nil {
 			if _, ok := err.(*build.NoGoError); ok {
 				return nil
@@ -410,7 +410,33 @@ func findImportComment(src *GoSource) (string, error) {
 			return err
 		}
 		if pkg.ImportComment != "" {
-			importPath = pkg.ImportComment
+			// Work backwards to find the top-level import path
+			rel, err := filepath.Rel(src.Path, path)
+			if err != nil {
+				return errors.Wrapf(err, "Rel(%q, %q)", src.Path, path)
+			}
+
+			sub := filepath.ToSlash(rel)
+			p := pkg.ImportComment
+			switch {
+			case rel == ".":
+				// This is in a top-level file so use
+				// the import comment as-is.
+				importPath = p
+			case !strings.HasSuffix(p, sub):
+				// Subdirectory doesn't match the end
+				// of the import comment.
+				log.Debugf("ignoring import path in %s: %s",
+					sub, p)
+				return nil
+			default:
+				// If we found "import/path/sub" from parsing
+				// in "sub", find "import/path" by shrinking
+				// the slice from the end by the length of
+				// "sub" and by the additional separator.
+				importPath = p[:len(p)-1-len(sub)]
+			}
+
 			log.Debugf("found import path from import comment: %s",
 				importPath)
 			return errFound
