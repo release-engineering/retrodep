@@ -88,13 +88,6 @@ func NewFileHashes(h Hasher, root string, excludes map[string]struct{}) (*FileHa
 		hashes: make(map[string]FileHash),
 	}
 	root = path.Clean(root)
-	var rootlen int
-	switch {
-	case root == ".":
-		rootlen = 0
-	default:
-		rootlen = 1 + len(root)
-	}
 
 	// Make a local copy of excludes we can safely modify
 	excl := make(map[string]struct{})
@@ -150,7 +143,11 @@ func NewFileHashes(h Hasher, root string, excludes map[string]struct{}) (*FileHa
 		if !info.Mode().IsRegular() {
 			return nil
 		}
-		relativePath := path[rootlen:]
+		relativePath, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+
 		fileHash, err := h.Hash(relativePath, path)
 		if err != nil {
 			return err

@@ -18,10 +18,169 @@ package backvendor
 import (
 	"os"
 	"testing"
+
+	"golang.org/x/tools/go/vcs"
 )
 
+func TestFindExcludes(t *testing.T) {
+	type tcase struct {
+		dir   string
+		globs []string
+		exp   []string
+	}
+	tcases := []tcase{
+		tcase{
+			dir:   "testdata/gosource",
+			globs: nil,
+			exp:   []string{},
+		},
+
+		tcase{
+			dir:   "testdata/gosource",
+			globs: []string{"vendor*"},
+			exp:   []string{"testdata/gosource/vendor"},
+		},
+	}
+	for _, tc := range tcases {
+		excl, err := FindExcludes(tc.dir, tc.globs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(tc.exp) != len(excl) {
+			t.Errorf("wrong length: got %d, want %d", len(excl), len(tc.exp))
+		}
+		for i, e := range tc.exp {
+			if excl[i] != e {
+				t.Errorf("wrong value: got %v, want %v", excl, tc.exp)
+				break
+			}
+		}
+	}
+}
+
+func TestNewGoSource(t *testing.T) {
+	type tcase struct {
+		path  string
+		expOk bool
+	}
+	tcases := []tcase{
+		tcase{"testdata/gosource", true},
+		tcase{"testdata/godep", true},
+		tcase{"testdata", false},
+	}
+	for _, tc := range tcases {
+		_, err := NewGoSource(tc.path, nil)
+		ok := err == nil
+		if ok != tc.expOk {
+			t.Errorf("%s: got %s, want ok:%t",
+				tc.path, err, tc.expOk)
+		}
+	}
+}
+
+func TestFindGoSources(t *testing.T) {
+	type exp struct {
+		path, subpath string
+	}
+	type tcase struct {
+		name string
+		path string
+		exp  []exp
+	}
+	tcases := []tcase{
+		tcase{
+			name: "single",
+			path: "testdata/gosource",
+			exp:  []exp{{"testdata/gosource", ""}},
+		},
+
+		tcase{
+			name: "multi",
+			path: "testdata/multi",
+			exp: []exp{
+				{"testdata/multi/abc", "abc"},
+				{"testdata/multi/def", "def"},
+			},
+		},
+	}
+	for _, tc := range tcases {
+		srcs, err := FindGoSources(tc.path, nil)
+		if err != nil {
+			t.Errorf("%s: %s", tc.name, err)
+			continue
+		}
+		if srcs == nil {
+			t.Errorf("%s: srcs is nil", tc.name)
+			continue
+		}
+		if len(srcs) != len(tc.exp) {
+			t.Errorf("%s: got %d sources, want %d", tc.name, len(srcs), len(tc.exp))
+			continue
+		}
+		for i, src := range tc.exp {
+			if src.path != srcs[i].Path {
+				t.Errorf("%s: Path: got %q, want %q", tc.name, srcs[i].Path, src.path)
+			}
+			if src.subpath != srcs[i].SubPath {
+				t.Errorf("%s: SubPath: got %q, want %q", tc.name, srcs[i].SubPath, src.subpath)
+			}
+		}
+	}
+}
+
+func TestProject(t *testing.T) {
+	type tcase struct {
+		name       string
+		importPath string
+		root       string
+		expSubPath string
+	}
+	tcases := []tcase{
+		tcase{
+			name:       "trivial",
+			importPath: "example.com/foo",
+			root:       "example.com/foo",
+			expSubPath: "",
+		},
+
+		tcase{
+			name:       "subdir",
+			importPath: "example.com/foo/bar",
+			root:       "example.com/foo",
+			expSubPath: "bar",
+		},
+	}
+	src, err := NewGoSource("testdata/gosource", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Reset vcsRepoRootForImportPath after this test.
+	defer func() {
+		vcsRepoRootForImportPath = vcs.RepoRootForImportPath
+	}()
+
+	for _, tc := range tcases {
+		vcsRepoRootForImportPath = func(importPath string, _ bool) (*vcs.RepoRoot, error) {
+			return &vcs.RepoRoot{
+				Root: tc.root,
+			}, nil
+		}
+
+		repoPath, err := src.Project(tc.importPath)
+		if err != nil {
+			t.Errorf("%s: %s", tc.name, err)
+			continue
+		}
+		if repoPath.SubPath != tc.expSubPath {
+			t.Errorf("%s: SubPath: want %q, got %q", tc.name, repoPath.SubPath,
+				tc.expSubPath)
+		}
+	}
+}
+
 func TestDirs(t *testing.T) {
-	src, err := NewGoSource("testdata/gosource")
+	src, err := NewGoSource("testdata/gosource", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +193,7 @@ func TestDirs(t *testing.T) {
 }
 
 func TestGodepFalse(t *testing.T) {
-	src, err := NewGoSource("testdata/gosource")
+	src, err := NewGoSource("testdata/gosource", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +203,7 @@ func TestGodepFalse(t *testing.T) {
 }
 
 func TestGodepTrue(t *testing.T) {
-	src, err := NewGoSource("testdata/godep")
+	src, err := NewGoSource("testdata/godep", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +218,7 @@ func TestGodepTrue(t *testing.T) {
 }
 
 func TestGlideFalse(t *testing.T) {
-	src, err := NewGoSource("testdata/godep")
+	src, err := NewGoSource("testdata/godep", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +228,7 @@ func TestGlideFalse(t *testing.T) {
 }
 
 func TestGlideTrue(t *testing.T) {
-	src, err := NewGoSource("testdata/glide")
+	src, err := NewGoSource("testdata/glide", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,20 +239,30 @@ func TestGlideTrue(t *testing.T) {
 
 func TestImportPathFromFilepath(t *testing.T) {
 	tests := []struct {
+		name                 string
 		filePath, importPath string
 		ok                   bool
 	}{
 		{
+			"toplevel",
 			"/home/foo/github.com/release-engineering/backvendor",
 			"github.com/release-engineering/backvendor",
 			true,
 		},
 		{
+			"subdir",
+			"/home/foo/github.com/release-engineering/backvendor/backvendor",
+			"github.com/release-engineering/backvendor/backvendor",
+			true,
+		},
+		{
+			"trailing-slash",
 			"/home/foo/github.com/release-engineering/backvendor/",
 			"github.com/release-engineering/backvendor",
 			true,
 		},
 		{
+			"unknown",
 			"release-engineering/backvendor",
 			"",
 			false,
@@ -115,8 +284,8 @@ func TestImportPathFromFilepath(t *testing.T) {
 	for _, test := range tests {
 		importPath, ok := importPathFromFilepath(test.filePath)
 		if ok != test.ok {
-			t.Errorf("wrong ok value for %s: got _,%v, want _,%v",
-				test.filePath, ok, test.ok)
+			t.Errorf("%s: wrong ok value for %s: got _,%v, want _,%v",
+				test.name, test.filePath, ok, test.ok)
 			continue
 		}
 		if !ok {
@@ -124,8 +293,8 @@ func TestImportPathFromFilepath(t *testing.T) {
 		}
 
 		if importPath != test.importPath {
-			t.Errorf("wrong path for %s: got %q, want %q",
-				test.filePath, importPath, test.importPath)
+			t.Errorf("%s: wrong path for %s: got %q, want %q",
+				test.name, test.filePath, importPath, test.importPath)
 		}
 	}
 }

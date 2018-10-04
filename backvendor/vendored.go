@@ -39,7 +39,7 @@ type vendoredSearch struct {
 	lastdir string
 
 	// Vendored packages, indexed by Root
-	vendored map[string]*RepoRoot
+	vendored map[string]*RepoPath
 }
 
 func (s *vendoredSearch) inLastDir(pth string) bool {
@@ -48,24 +48,29 @@ func (s *vendoredSearch) inLastDir(pth string) bool {
 
 func processVendoredSource(src *GoSource, search *vendoredSearch, pth string) error {
 	// For .go source files, see which directory they are in
-	thisImport := filepath.Dir(pth[1+len(search.vendor):])
-	repoRoot, err := src.RepoRootForImportPath(thisImport)
+	rel, err := filepath.Rel(search.vendor, pth)
+	if err != nil {
+		return err
+	}
+	thisImport := filepath.ToSlash(filepath.Dir(rel))
+	repoPath, err := src.RepoPathForImportPath(thisImport)
 	if err != nil {
 		return err
 	}
 
 	// The project name is relative to the vendor dir
-	search.vendored[repoRoot.Root] = repoRoot
-	search.lastdir = filepath.Join(search.vendor, repoRoot.Root)
+	search.vendored[repoPath.Root] = repoPath
+	search.lastdir = filepath.Join(search.vendor,
+		filepath.FromSlash(repoPath.Root))
 	return nil
 }
 
 // VendoredProjects return a map of project import names to information
 // about those projects, including which version control system they use.
-func (src GoSource) VendoredProjects() (map[string]*RepoRoot, error) {
+func (src GoSource) VendoredProjects() (map[string]*RepoPath, error) {
 	search := vendoredSearch{
 		vendor:   src.Vendor(),
-		vendored: make(map[string]*RepoRoot),
+		vendored: make(map[string]*RepoPath),
 	}
 	walkfn := func(pth string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -162,11 +167,11 @@ func updateHashesAfterStrip(hashes *FileHashes, wt WorkingTree, ref string, path
 	return anyChanged, nil
 }
 
-func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, refs []string) ([]string, error) {
+func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, subPath string, refs []string) ([]string, error) {
 	var paths []string
 	if strip {
-		for hash, _ := range hashes.hashes {
-			paths = append(paths, hash)
+		for path := range hashes.hashes {
+			paths = append(paths, filepath.Join(subPath, path))
 		}
 	}
 
@@ -197,7 +202,7 @@ func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, refs []string
 	matches := make([]string, 0)
 	for _, ref := range refs {
 		log.Debugf("%s: trying match", ref)
-		refHashes, err := wt.FileHashesFromRef(ref)
+		refHashes, err := wt.FileHashesFromRef(ref, subPath)
 		if err != nil {
 			if err == ErrorInvalidRef {
 				continue
@@ -260,26 +265,39 @@ func chooseBestTag(tags []string) string {
 }
 
 // DescribeProject attempts to identify the tag in the version control
-// system which corresponds to the project. Vendored files and files
-// whose names begin with "." are ignored.
-func (src GoSource) DescribeProject(project *RepoRoot, root string) (*Reference, error) {
-	wt, err := NewWorkingTree(project)
+// system which corresponds to the project, based on comparison with
+// files in dir. Vendored files and files whose names begin with "."
+// are ignored.
+func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, error) {
+	wt, err := NewWorkingTree(&project.RepoRoot)
 	if err != nil {
 		return nil, err
 	}
 	defer wt.Close()
 
+	// Make a local copy of src.excludes we can add keys to
 	excludes := make(map[string]struct{})
 	for key := range src.excludes {
 		excludes[key] = struct{}{}
 	}
+
 	// Ignore vendor directory
-	excludes[filepath.Join(root, "vendor")] = struct{}{}
+	excludes[filepath.Join(dir, "vendor")] = struct{}{}
+
+	// Work out how to hash files ready for comparison
 	hasher, ok := NewHasher(project.VCS.Cmd)
 	if !ok {
 		return nil, ErrorUnknownVCS
 	}
-	hashes, err := NewFileHashes(hasher, root, excludes)
+
+	// Work out the sub-directory within the repository root to
+	// use for comparison.
+	subPath := project.SubPath
+	projDir := filepath.Join(project.Root, subPath)
+	log.Debugf("describing %s compared to %s", dir, projDir)
+
+	// Compute the hashes of the local files
+	hashes, err := NewFileHashes(hasher, dir, excludes)
 	if err != nil {
 		return nil, err
 	}
@@ -297,23 +315,25 @@ func (src GoSource) DescribeProject(project *RepoRoot, root string) (*Reference,
 	// If godep is in use, strip import comments from the
 	// project's vendored files (but not files from the top-level
 	// project).
-	strip := src.usesGodep && root != src.Path
+	strip := src.usesGodep && dir != src.Path
 
 	// First try to match against a specific version, if specified
 	if project.Version != "" {
-		match, err := matchFromRefs(strip, hashes, wt, []string{project.Version})
+		matches, err := matchFromRefs(strip, hashes, wt,
+			subPath, []string{project.Version})
 		switch err {
 		case nil:
 			// Found a match
-			log.Debugf("Found match for %v which matches dependency management version", match)
-			rev, err := PseudoVersion(wt, match[0])
+			match := matches[0]
+			log.Debugf("Found match for %q which matches dependency management version", match)
+			ver, err := PseudoVersion(wt, match)
 			if err != nil {
 				return nil, err
 			}
 
 			return &Reference{
-				Rev: rev,
-				Ver: match[0],
+				Rev: match,
+				Ver: ver,
 			}, nil
 		case ErrorVersionNotFound:
 			// No match, carry on
@@ -329,7 +349,7 @@ func (src GoSource) DescribeProject(project *RepoRoot, root string) (*Reference,
 		return nil, err
 	}
 
-	matches, err := matchFromRefs(strip, hashes, wt, tags)
+	matches, err := matchFromRefs(strip, hashes, wt, subPath, tags)
 	switch err {
 	case nil:
 		// Found a match
@@ -357,7 +377,7 @@ func (src GoSource) DescribeProject(project *RepoRoot, root string) (*Reference,
 		return nil, err
 	}
 
-	matches, err = matchFromRefs(strip, hashes, wt, revs)
+	matches, err = matchFromRefs(strip, hashes, wt, subPath, revs)
 	if err != nil {
 		return nil, err
 	}
@@ -378,8 +398,9 @@ func (src GoSource) DescribeProject(project *RepoRoot, root string) (*Reference,
 // DescribeVendoredProject attempts to identify the tag in the version
 // control system which corresponds to the vendored copy of the
 // project.
-func (src GoSource) DescribeVendoredProject(project *RepoRoot) (*Reference, error) {
-	projectdir := filepath.Join(src.Vendor(), project.Root)
-	ref, err := src.DescribeProject(project, projectdir)
+func (src GoSource) DescribeVendoredProject(project *RepoPath) (*Reference, error) {
+	projRootImportPath := filepath.FromSlash(project.Root)
+	projDir := filepath.Join(src.Vendor(), projRootImportPath)
+	ref, err := src.DescribeProject(project, projDir)
 	return ref, err
 }

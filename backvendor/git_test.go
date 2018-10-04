@@ -29,8 +29,8 @@ func TestGitRevisions(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
@@ -61,8 +61,8 @@ func TestGitRevisionFromTag(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
@@ -82,8 +82,8 @@ func TestGitRevSync(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
@@ -98,8 +98,8 @@ func TestGitTimeFromRevision(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
@@ -123,8 +123,8 @@ func TestGitReachableTag(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
@@ -190,13 +190,13 @@ func TestGitFileHashesFromRef(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
 	mockedStdout = "what?"
-	_, err := wt.FileHashesFromRef("HEAD")
+	_, err := wt.FileHashesFromRef("HEAD", "")
 	if err == nil {
 		t.Error("invalid output not reported as error")
 	}
@@ -209,7 +209,7 @@ func TestGitFileHashesFromRef(t *testing.T) {
 		"100644 blob e69de29bb2d1d6434b8b29ae775ad8c2e48c5391\tvendor/github.com/foo/bar/bar baz.go",
 	}, "\n") + "\n"
 
-	h, err := wt.FileHashesFromRef("HEAD")
+	h, err := wt.FileHashesFromRef("HEAD", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,8 +240,8 @@ func TestGitErrors(t *testing.T) {
 
 	wt := gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{
-			Source: &GoSource{},
-			VCS:    vcs.ByCmd(vcsGit),
+			Dir: "",
+			VCS: vcs.ByCmd(vcsGit),
 		},
 	}
 
@@ -268,7 +268,7 @@ func TestGitErrors(t *testing.T) {
 	if _, ok := err.(*exec.ExitError); !ok {
 		t.Error("ReachableTag: git failure was not reported")
 	}
-	_, err = wt.FileHashesFromRef("012345")
+	_, err = wt.FileHashesFromRef("012345", "")
 	if _, ok := err.(*exec.ExitError); !ok {
 		t.Error("FileHashesFromRef: git failure was not reported")
 	}

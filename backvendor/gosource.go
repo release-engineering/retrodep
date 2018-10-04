@@ -17,6 +17,7 @@ package backvendor // import "github.com/release-engineering/backvendor/backvend
 
 import (
 	"encoding/json"
+	"fmt"
 	"go/build"
 	"os"
 	"path"
@@ -30,8 +31,14 @@ import (
 	"github.com/release-engineering/backvendor/backvendor/glide"
 )
 
-type RepoRoot struct {
+var vcsRepoRootForImportPath = vcs.RepoRootForImportPath
+
+type RepoPath struct {
 	vcs.RepoRoot
+
+	// SubPath is the top-level filepath relative to the root of
+	// the repository, or "" if they are the same.
+	SubPath string
 
 	Version string
 }
@@ -41,14 +48,18 @@ var errorNoImportPathComment = errors.New("no import path comment")
 
 // GoSource represents a filesystem tree containing Go source code.
 type GoSource struct {
-	// Path to the top-level package
+	// Path is the filepath to the top-level package
 	Path string
+
+	// SubPath is the top-level filepath relative to the root of
+	// the repository, or "" if they are the same.
+	SubPath string
 
 	// Package is any import path in this project
 	Package string
 
-	// repoRoots maps apparent import paths to actual repositories
-	repoRoots map[string]*RepoRoot
+	// repoPaths maps apparent import paths to actual repositories
+	repoPaths map[string]*RepoPath
 
 	// excludes is a map of paths to ignore in this project
 	excludes map[string]struct{}
@@ -57,29 +68,153 @@ type GoSource struct {
 	usesGodep bool
 }
 
-func findExcludes(pth string, globs []string) (map[string]struct{}, error) {
-	excludes := make(map[string]struct{})
+// FindExcludes returns a slice of paths which match the provided
+// globs.
+func FindExcludes(path string, globs []string) ([]string, error) {
+	excludes := make([]string, 0)
 	for _, glob := range globs {
-		matches, err := filepath.Glob(filepath.Join(pth, glob))
+		matches, err := filepath.Glob(filepath.Join(path, glob))
 		if err != nil {
 			return nil, err
 		}
 		for _, match := range matches {
-			excludes[match] = struct{}{}
+			excludes = append(excludes, match)
 		}
 	}
 	return excludes, nil
 }
 
-func NewGoSource(pth string, excludeGlobs ...string) (*GoSource, error) {
-	excludes, err := findExcludes(pth, excludeGlobs)
+// FindGoSources looks for top-level projects at path. If path is itself
+// a top-level project, the returned slice contains a single *GoSource
+// for that project; otherwise immediate sub-directories are tested.
+// Files matching globs in excludeGlobs will not be considered when
+// matching against upstream repositories.
+func FindGoSources(path string, excludeGlobs []string) ([]*GoSource, error) {
+	// Try at the top-level.
+	excludes, err := FindExcludes(path, excludeGlobs)
+	if err != nil {
+		return nil, err
+	}
+	src, terr := NewGoSource(path, excludes)
+	if terr == nil {
+		log.Debugf("found project at top-level: %s", path)
+		return []*GoSource{src}, nil
+	}
+
+	// Convert the exclusions list to absolute paths and make a
+	// map for fast look-up.
+	excl := make(map[string]struct{})
+	for _, e := range excludes {
+		a, err := filepath.Abs(e)
+		if err != nil {
+			return nil, err
+		}
+		excl[a] = struct{}{}
+	}
+
+	// Work out the absolute path we were given, for constructing
+	// keys to look up in excl
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Abs(%q)", path)
+	}
+
+	// Look in sub-directories.
+	subDirStart := len(abs) + 1
+	srcs := make([]*GoSource, 0)
+	search := func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Ignore the top-level directory itself.
+		if p == abs {
+			return nil
+		}
+
+		// Only consider directories.
+		if !info.IsDir() {
+			return nil
+		}
+
+		// We only want to consider sub-directories one level
+		// down from the top-level.
+		if strings.ContainsRune(p[subDirStart:], filepath.Separator) {
+			return filepath.SkipDir
+		}
+
+		// Check if this is excluded from consideration
+		if _, ok := excl[p]; ok {
+			return filepath.SkipDir
+		}
+
+		r := filepath.Join(path, p[subDirStart:])
+		src, err := NewGoSource(r, excludes)
+		if err != nil {
+			if _, ok := err.(*build.NoGoError); ok {
+				return nil
+			}
+			return err
+		}
+
+		err = src.SetSubPath(path)
+		if err != nil {
+			return err
+		}
+
+		srcs = append(srcs, src)
+		log.Debugf("found project in subdir: %s", r)
+		return nil
+	}
+
+	err = filepath.Walk(abs, search)
 	if err != nil {
 		return nil, err
 	}
 
+	if len(srcs) == 0 {
+		// Return the original error from the top-level check.
+		return nil, terr
+	}
+
+	return srcs, nil
+}
+
+// NewGoSource returns a *GoSource for the given path path. The paths
+// in excludes will not be considered when matching against the
+// upstream repository.
+func NewGoSource(path string, excludes []string) (*GoSource, error) {
+	// There has to be either:
+	// - a 'vendor' subdirectory, or
+	// - some '*.go' files with Go code in
+	// Otherwise there is nothing for us to do.
+	var vendorExists bool
+	st, err := os.Stat(filepath.Join(path, "vendor"))
+	if err == nil {
+		vendorExists = st.IsDir()
+	}
+	switch {
+	case vendorExists:
+		// There is a vendor directory. Nothing else to check.
+	case err == nil || os.IsNotExist(err):
+		// No vendor directory, check for Go source.
+		_, err := build.ImportDir(path, build.ImportComment)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		// Some other failure.
+		return nil, err
+	}
+
+	excl := make(map[string]struct{})
+	for _, e := range excludes {
+		excl[e] = struct{}{}
+	}
+
 	src := &GoSource{
-		Path:     pth,
-		excludes: excludes,
+		Path:     path,
+		excludes: excl,
 	}
 
 	// Always read Godeps.json because we need to know whether
@@ -99,7 +234,7 @@ func NewGoSource(pth string, excludeGlobs ...string) (*GoSource, error) {
 	if !ok && src.Package == "" {
 		if importPath, err := findImportComment(src); err == nil {
 			src.Package = importPath
-		} else if importPath, ok := importPathFromFilepath(pth); ok {
+		} else if importPath, ok := importPathFromFilepath(path); ok {
 			src.Package = importPath
 		}
 	}
@@ -168,7 +303,7 @@ func loadGlideConf(src *GoSource) (bool, error) {
 		return false, errors.Wrapf(err, "stat 'vendor' for %s", conf)
 	}
 
-	repoRoots := make(map[string]*RepoRoot)
+	repoPaths := make(map[string]*RepoPath)
 	for _, imp := range glide.Imports {
 		theVcs := vcs.ByCmd(vcsGit) // default to git
 		if imp.Repo == "" {
@@ -181,7 +316,7 @@ func loadGlideConf(src *GoSource) (bool, error) {
 			theVcs = root.VCS
 		}
 
-		repoRoots[imp.Name] = &RepoRoot{
+		repoPaths[imp.Name] = &RepoPath{
 			RepoRoot: vcs.RepoRoot{
 				VCS:  theVcs,
 				Repo: imp.Repo,
@@ -191,21 +326,21 @@ func loadGlideConf(src *GoSource) (bool, error) {
 		}
 	}
 
-	src.repoRoots = repoRoots
+	src.repoPaths = repoPaths
 	return true, nil
 }
 
 // importPathFromFilepath attempts to use the project directory path to
 // infer its import path.
-func importPathFromFilepath(pth string) (string, bool) {
-	absPath, err := filepath.Abs(pth)
+func importPathFromFilepath(path string) (string, bool) {
+	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return "", false
 	}
 
 	// Skip leading '/'
-	pth = absPath[1:]
-	components := strings.Split(pth, string(filepath.Separator))
+	path = absPath[1:]
+	components := strings.Split(path, string(filepath.Separator))
 	if len(components) < 2 {
 		return "", false
 	}
@@ -216,10 +351,10 @@ func importPathFromFilepath(pth string) (string, bool) {
 			continue
 		}
 
-		pth := strings.Join(components[i:len(components)], "/")
-		repoRoot, err := vcs.RepoRootForImportPath(pth, false)
+		p := strings.Join(components[i:len(components)], "/")
+		_, err := vcs.RepoRootForImportPath(p, false)
 		if err == nil {
-			return repoRoot.Root, true
+			return p, true
 		}
 	}
 
@@ -285,15 +420,27 @@ func findImportComment(src *GoSource) (string, error) {
 	return importPath, err
 }
 
+// SetSubPath updates the GoSource.SubPath string to be relative to
+// the given root.
+func (src *GoSource) SetSubPath(root string) error {
+	rel, err := filepath.Rel(root, src.Path)
+	if err != nil {
+		return errors.Wrapf(err, "Rel(%q, %q)", root, src.Path)
+	}
+	src.SubPath = rel
+	return nil
+}
+
 // Vendor returns the path to the vendored source code.
 func (src GoSource) Vendor() string {
 	return filepath.Join(src.Path, "vendor")
 }
 
-// Project returns information about the project given its import
+// Project returns information about the project's repository, as well
+// as the project's path within the repository, given its import
 // path. If importPath is "" it is deduced from import comments, if
 // available.
-func (src GoSource) Project(importPath string) (*RepoRoot, error) {
+func (src GoSource) Project(importPath string) (*RepoPath, error) {
 	if importPath == "" {
 		importPath = src.Package
 		if importPath == "" {
@@ -301,15 +448,34 @@ func (src GoSource) Project(importPath string) (*RepoRoot, error) {
 		}
 	}
 
-	repoRoot, err := vcs.RepoRootForImportPath(importPath, false)
-	return &RepoRoot{RepoRoot: *repoRoot}, err
+	repoRoot, err := vcsRepoRootForImportPath(importPath, false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Work out root path
+	r := repoRoot.Root
+	var subPath string
+	switch {
+	case importPath == r:
+		// Sub path is ""
+	case !strings.HasPrefix(importPath, r) || importPath[len(r)] != '/':
+		return nil, fmt.Errorf("expected prefix of %s: %s", importPath, r)
+	default:
+		subPath = importPath[len(r)+1:]
+	}
+
+	return &RepoPath{
+		RepoRoot: *repoRoot,
+		SubPath:  subPath,
+	}, err
 }
 
-func (src GoSource) RepoRootForImportPath(importPath string) (*RepoRoot, error) {
+func (src GoSource) RepoPathForImportPath(importPath string) (*RepoPath, error) {
 	// First look up replacements
 	pth := importPath
 	for {
-		repl, ok := src.repoRoots[pth]
+		repl, ok := src.repoPaths[pth]
 		if ok {
 			// Found a replacement repo
 			return repl, nil
@@ -332,9 +498,9 @@ func (src GoSource) RepoRootForImportPath(importPath string) (*RepoRoot, error) 
 		importPath = path.Dir(importPath[:u])
 		r, nerr := vcs.RepoRootForImportPath(importPath, false)
 		if nerr == nil {
-			return &RepoRoot{RepoRoot: *r}, nil
+			return &RepoPath{RepoRoot: *r}, nil
 		}
 	}
 
-	return &RepoRoot{RepoRoot: *r}, err
+	return &RepoPath{RepoRoot: *r}, err
 }
