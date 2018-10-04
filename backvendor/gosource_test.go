@@ -67,6 +67,8 @@ func TestNewGoSource(t *testing.T) {
 	tcases := []tcase{
 		tcase{"testdata/gosource", "", true},
 		tcase{"testdata/godep", "example.com/godep", true},
+		tcase{"testdata/importcomment", "importcomment", true},
+		tcase{"testdata/importcommentsub", "importcomment", true},
 		tcase{"testdata", "", false},
 	}
 	for _, tc := range tcases {
