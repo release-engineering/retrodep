@@ -230,6 +230,9 @@ func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, subPath strin
 
 // Reference describes the origin of a vendored project.
 type Reference struct {
+	// Repo is the URL for the repository holding the source code.
+	Repo string
+
 	// Tag is the semver tag within the upstream repository which
 	// corresponds exactly to the vendored copy of the project. If
 	// no tag corresponds Tag is "".
@@ -332,8 +335,9 @@ func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, 
 			}
 
 			return &Reference{
-				Rev: match,
-				Ver: ver,
+				Repo: project.Repo,
+				Rev:  match,
+				Ver:  ver,
 			}, nil
 		case ErrorVersionNotFound:
 			// No match, carry on
@@ -360,9 +364,10 @@ func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, 
 		}
 
 		return &Reference{
-			Tag: match,
-			Rev: rev,
-			Ver: match,
+			Repo: project.Repo,
+			Tag:  match,
+			Rev:  rev,
+			Ver:  match,
 		}, nil
 	case ErrorVersionNotFound:
 		// No match, carry on
@@ -390,8 +395,9 @@ func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, 
 	}
 
 	return &Reference{
-		Rev: rev,
-		Ver: ver,
+		Repo: project.Repo,
+		Rev:  rev,
+		Ver:  ver,
 	}, nil
 }
 

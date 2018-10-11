@@ -80,3 +80,20 @@ func TestDisplayTemplateElseIf(t *testing.T) {
 		t.Fatal(fmt.Sprintf("Expected: %s but got: %s", expected, builder.String()))
 	}
 }
+
+func TestDisplayRepo(t *testing.T) {
+	const repo = "https://github.com/release-engineering/backvendor"
+	ref := &Reference{Repo: repo}
+	var builder strings.Builder
+	tmpl, err := Display("{{.Repo}}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = tmpl.Execute(&builder, ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if builder.String() != repo {
+		t.Errorf("got %q, want %q", builder.String(), repo)
+	}
+}
