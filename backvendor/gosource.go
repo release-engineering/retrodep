@@ -174,6 +174,10 @@ func FindGoSources(path string, excludeGlobs []string) ([]*GoSource, error) {
 
 	if len(srcs) == 0 {
 		// Return the original error from the top-level check.
+		if _, ok := terr.(*build.NoGoError); ok {
+			return nil, ErrorNoGo
+		}
+
 		return nil, terr
 	}
 

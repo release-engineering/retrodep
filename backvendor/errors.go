@@ -17,6 +17,9 @@ package backvendor
 
 import "errors"
 
+// ErrorNoGo indicates there is no Go source code to process.
+var ErrorNoGo = errors.New("no Go source code to process")
+
 // ErrorNeedImportPath indicates the import path for the project
 // cannot be determined automatically and must be provided.
 var ErrorNeedImportPath = errors.New("unable to determine import path")

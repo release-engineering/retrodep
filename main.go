@@ -175,6 +175,10 @@ func processArgs(args []string) []*backvendor.GoSource {
 	path := flag.Arg(0)
 	sources, err := backvendor.FindGoSources(path, excludeGlobs)
 	if err != nil {
+		if err == backvendor.ErrorNoGo {
+			return []*backvendor.GoSource{}
+		}
+
 		log.Fatal(err)
 	}
 
