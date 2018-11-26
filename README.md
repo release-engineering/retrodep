@@ -31,6 +31,8 @@ usage: backvendor [OPTION]... PATH
         print help
   -importpath string
         top-level import path
+  -only-importpath
+        only show the top-level import path
   -template string
         go template to use for output with Rev, Tag and Ver
   -x    exit on the first failure
