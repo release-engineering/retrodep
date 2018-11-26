@@ -33,6 +33,7 @@ usage: backvendor [OPTION]... PATH
         top-level import path
   -template string
         go template to use for output with Rev, Tag and Ver
+  -x    exit on the first failure
 ```
 
 In many cases backvendor can work out the import path for the top-level project. In those cases, simply supply the directory name to examine:

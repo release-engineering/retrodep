@@ -37,6 +37,7 @@ var depsFlag = flag.Bool("deps", true, "show vendored dependencies")
 var excludeFrom = flag.String("exclude-from", "", "ignore directory entries matching globs in `exclusions`")
 var debugFlag = flag.Bool("debug", false, "show debugging output")
 var template = flag.String("template", "", "go template to use for output with Rev, Tag and Ver")
+var exitFirst = flag.Bool("x", false, "exit on the first failure")
 
 var errorShown = false
 
@@ -45,6 +46,9 @@ func displayUnknown(name string) {
 	if !errorShown {
 		errorShown = true
 		fmt.Fprintln(os.Stderr, "error: not all versions identified")
+		if *exitFirst {
+			os.Exit(1)
+		}
 	}
 }
 
