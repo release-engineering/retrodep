@@ -273,6 +273,18 @@ func TestGitErrors(t *testing.T) {
 		t.Error("FileHashesFromRef: git failure was not reported")
 	}
 
+	mockedStderr = "fatal: Not a valid object name 012345\n"
+	_, err = wt.FileHashesFromRef("012345", "")
+	if err != ErrorInvalidRef {
+		t.Error("FileHashesFromRef: missing ErrorInvalidRef")
+	}
+
+	mockedStderr = "fatal: not a tree object\n"
+	_, err = wt.FileHashesFromRef("012345", "")
+	if err != ErrorInvalidRef {
+		t.Error("FileHashesFromRef: missing ErrorInvalidRef")
+	}
+
 	hasher, ok := NewHasher(vcsGit)
 	if !ok {
 		t.Fatal("unknown hasher")

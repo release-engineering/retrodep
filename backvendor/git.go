@@ -142,8 +142,13 @@ func (g *gitWorkingTree) FileHashesFromRef(ref, subPath string) (*FileHashes, er
 	}
 	buf, err := g.anyWorkingTree.run(args...)
 	if err != nil {
-		if strings.HasPrefix(buf.String(), "fatal: Not a valid object name ") {
+		output := strings.ToLower(buf.String())
+		switch {
+		case strings.HasPrefix(output, "fatal: not a valid object name "):
 			// This is a branch name, not a tag name
+			return nil, ErrorInvalidRef
+		case strings.HasPrefix(output, "fatal: not a tree object"):
+			// This ref is not present in the repo
 			return nil, ErrorInvalidRef
 		}
 
