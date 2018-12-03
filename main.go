@@ -33,6 +33,7 @@ var log = logging.MustGetLogger("backvendor")
 
 var helpFlag = flag.Bool("help", false, "print help")
 var importPath = flag.String("importpath", "", "top-level import path")
+var onlyImportPath = flag.Bool("only-importpath", false, "only show the top-level import path")
 var depsFlag = flag.Bool("deps", true, "show vendored dependencies")
 var excludeFrom = flag.String("exclude-from", "", "ignore directory entries matching globs in `exclusions`")
 var debugFlag = flag.Bool("debug", false, "show debugging output")
@@ -66,8 +67,8 @@ func display(template string, name string, ref *backvendor.Reference) {
 	fmt.Println(builder.String())
 }
 
-func showTopLevel(src *backvendor.GoSource) {
-	main, err := src.Project(*importPath)
+func getProject(src *backvendor.GoSource, importPath string) *backvendor.RepoPath {
+	main, err := src.Project(importPath)
 	if err != nil {
 		if err == backvendor.ErrorNeedImportPath {
 			log.Errorf("%s: %s", src.Path, err)
@@ -78,6 +79,11 @@ func showTopLevel(src *backvendor.GoSource) {
 		log.Fatalf("%s: %s", src.Path, err)
 	}
 
+	return main
+}
+
+func showTopLevel(src *backvendor.GoSource) {
+	main := getProject(src, *importPath)
 	project, err := src.DescribeProject(main, src.Path)
 	switch err {
 	case backvendor.ErrorVersionNotFound:
@@ -191,10 +197,16 @@ func processArgs(args []string) []*backvendor.GoSource {
 
 func main() {
 	srcs := processArgs(os.Args)
+
 	for _, src := range srcs {
-		showTopLevel(src)
-		if *depsFlag {
-			showVendored(src)
+		if *onlyImportPath {
+			main := getProject(src, *importPath)
+			fmt.Println("*" + main.Root)
+		} else {
+			showTopLevel(src)
+			if *depsFlag {
+				showVendored(src)
+			}
 		}
 	}
 
