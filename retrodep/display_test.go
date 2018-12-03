@@ -1,4 +1,4 @@
-package backvendor
+package retrodep
 
 import (
 	"fmt"
@@ -82,7 +82,7 @@ func TestDisplayTemplateElseIf(t *testing.T) {
 }
 
 func TestDisplayRepo(t *testing.T) {
-	const repo = "https://github.com/release-engineering/backvendor"
+	const repo = "https://github.com/release-engineering/retrodep"
 	ref := &Reference{Repo: repo}
 	var builder strings.Builder
 	tmpl, err := Display("{{.Repo}}")

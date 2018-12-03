@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-// Package backvendor provides a way to represent Go source code in a
+// Package retrodep provides a way to represent Go source code in a
 // filesystem, and taken from a source code repository. It allows
 // mapping vendored packages back to the original versions they came
 // from.
@@ -23,7 +23,7 @@
 // VendoredProjects methods return information about the top-level
 // project and the vendored projects it has.
 //
-//     src := backvendor.NewGoSource(path, nil)
+//     src := retrodep.NewGoSource(path, nil)
 //     proj, perr := src.Project(importPath)
 //     vendored, verr := src.VendoredProjects()
 //
@@ -40,8 +40,8 @@
 // Representation, indicating the upstream version of the project or
 // vendored project, e.g.
 //
-//     ref, rerr := backvendor.DescribeProject(proj, src.Path)
+//     ref, rerr := retrodep.DescribeProject(proj, src.Path)
 //
 // It does this by comparing file hashes of the local files with those
 // from commits in the upstream repository.
-package backvendor
+package retrodep

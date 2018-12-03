@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package backvendor
+package retrodep
 
 import (
 	"os"
@@ -234,7 +234,7 @@ func TestGlideFalse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if src.Package == "github.com/release-engineering/backvendor/testdata/glide" {
+	if src.Package == "github.com/release-engineering/retrodep/testdata/glide" {
 		t.Fatal("usesGlide")
 	}
 }
@@ -244,7 +244,7 @@ func TestGlideTrue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if src.Package != "github.com/release-engineering/backvendor/testdata/glide" {
+	if src.Package != "github.com/release-engineering/retrodep/testdata/glide" {
 		t.Fatal("usesGodep")
 	}
 }
@@ -257,25 +257,25 @@ func TestImportPathFromFilepath(t *testing.T) {
 	}{
 		{
 			"toplevel",
-			"/home/foo/github.com/release-engineering/backvendor",
-			"github.com/release-engineering/backvendor",
+			"/home/foo/github.com/release-engineering/retrodep",
+			"github.com/release-engineering/retrodep",
 			true,
 		},
 		{
 			"subdir",
-			"/home/foo/github.com/release-engineering/backvendor/backvendor",
-			"github.com/release-engineering/backvendor/backvendor",
+			"/home/foo/github.com/release-engineering/retrodep/retrodep",
+			"github.com/release-engineering/retrodep/retrodep",
 			true,
 		},
 		{
 			"trailing-slash",
-			"/home/foo/github.com/release-engineering/backvendor/",
-			"github.com/release-engineering/backvendor",
+			"/home/foo/github.com/release-engineering/retrodep/",
+			"github.com/release-engineering/retrodep",
 			true,
 		},
 		{
 			"unknown",
-			"release-engineering/backvendor",
+			"release-engineering/retrodep",
 			"",
 			false,
 		},

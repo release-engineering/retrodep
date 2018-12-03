@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package backvendor
+package retrodep
 
 import "errors"
 
@@ -29,7 +29,7 @@ var ErrorNeedImportPath = errors.New("unable to determine import path")
 var ErrorVersionNotFound = errors.New("version not found")
 
 // ErrorUnknownVCS indicates the upstream version control system is not one of
-// those for which support is implemented in backvendor.
+// those for which support is implemented in retrodep.
 var ErrorUnknownVCS = errors.New("unknown VCS")
 
 // ErrorNoFiles indicates there are no files to compare hashes of

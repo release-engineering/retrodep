@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package backvendor
+package retrodep
 
 import (
 	"bytes"
@@ -135,7 +135,7 @@ func updateHashesAfterStrip(hashes *FileHashes, wt WorkingTree, ref string, path
 		}
 
 		// Write the altered content out to a file
-		f, err := ioutil.TempFile("", "backvendor-strip.")
+		f, err := ioutil.TempFile("", "retrodep-strip.")
 		if err != nil {
 			return anyChanged, errors.Wrap(err, "updating hash")
 		}

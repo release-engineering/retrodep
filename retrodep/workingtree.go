@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package backvendor
+package retrodep
 
 import (
 	"bufio"
@@ -97,7 +97,7 @@ type anyWorkingTree struct {
 // NewWorkingTree creates a local checkout of the version control
 // system for a Go project.
 func NewWorkingTree(project *vcs.RepoRoot) (WorkingTree, error) {
-	dir, err := ioutil.TempDir("", "backvendor.")
+	dir, err := ioutil.TempDir("", "retrodep.")
 	if err != nil {
 		return nil, err
 	}

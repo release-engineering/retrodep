@@ -1,4 +1,4 @@
-package backvendor
+package retrodep
 
 import (
 	"text/template"

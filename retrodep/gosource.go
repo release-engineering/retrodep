@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package backvendor // import "github.com/release-engineering/backvendor/backvendor"
+package retrodep
 
 import (
 	"encoding/json"
@@ -28,7 +28,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/tools/go/vcs"
 
-	"github.com/release-engineering/backvendor/backvendor/glide"
+	"github.com/release-engineering/retrodep/retrodep/glide"
 )
 
 var vcsRepoRootForImportPath = vcs.RepoRootForImportPath
@@ -43,7 +43,7 @@ type RepoPath struct {
 	Version string
 }
 
-var log = logging.MustGetLogger("backvendor")
+var log = logging.MustGetLogger("retrodep")
 var errorNoImportPathComment = errors.New("no import path comment")
 
 // GoSource represents a filesystem tree containing Go source code.
@@ -351,7 +351,7 @@ func importPathFromFilepath(path string) (string, bool) {
 
 	for i := len(components) - 2; i >= 0; i -= 1 {
 		// Avoid false positives like:
-		// github.com/release-engineering/backvendor/backvendor/testdata/gosource
+		// github.com/release-engineering/retrodep/retrodep/testdata/gosource
 		switch components[i] {
 		case "testdata", "vendor":
 			return "", false

@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package backvendor
+package retrodep
 
 import (
 	"encoding/xml"
@@ -148,7 +148,7 @@ func (h *hgWorkingTree) FileHashesFromRef(ref, subPath string) (*FileHashes, err
 		return nil, ErrorUnknownVCS
 	}
 
-	dir, err := ioutil.TempDir("", "backvendor.")
+	dir, err := ioutil.TempDir("", "retrodep.")
 	if err != nil {
 		return nil, errors.Wrapf(err, "FileHashesFromRef(%s)", ref)
 	}

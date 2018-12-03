@@ -18,7 +18,7 @@ func TestGlideFalse(t *testing.T) {
 	if len(glide.Imports) != 2 {
 		t.Fatalf("expected '%v', got '%v'", 2, len(glide.Imports))
 	}
-	if glide.Package != "github.com/release-engineering/backvendor/testdata/glide" {
-		t.Fatalf("expected '%v', got '%v'", "github.com/release-engineering/backvendor/testdata/glide", glide.Package)
+	if glide.Package != "github.com/release-engineering/retrodep/testdata/glide" {
+		t.Fatalf("expected '%v', got '%v'", "github.com/release-engineering/retrodep/testdata/glide", glide.Package)
 	}
 }

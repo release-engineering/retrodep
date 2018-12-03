@@ -26,10 +26,10 @@ import (
 	"strings"
 
 	"github.com/op/go-logging"
-	"github.com/release-engineering/backvendor/backvendor"
+	"github.com/release-engineering/retrodep/retrodep"
 )
 
-var log = logging.MustGetLogger("backvendor")
+var log = logging.MustGetLogger("retrodep")
 
 var helpFlag = flag.Bool("help", false, "print help")
 var importPath = flag.String("importpath", "", "top-level import path")
@@ -53,10 +53,10 @@ func displayUnknown(name string) {
 	}
 }
 
-func display(template string, name string, ref *backvendor.Reference) {
+func display(template string, name string, ref *retrodep.Reference) {
 	var builder strings.Builder
 	builder.WriteString(name)
-	var tmpl, err = backvendor.Display(template)
+	var tmpl, err = retrodep.Display(template)
 	if err != nil {
 		log.Fatalf("Error parsing supplied template. %s ", err)
 	}
@@ -67,10 +67,10 @@ func display(template string, name string, ref *backvendor.Reference) {
 	fmt.Println(builder.String())
 }
 
-func getProject(src *backvendor.GoSource, importPath string) *backvendor.RepoPath {
+func getProject(src *retrodep.GoSource, importPath string) *retrodep.RepoPath {
 	main, err := src.Project(importPath)
 	if err != nil {
-		if err == backvendor.ErrorNeedImportPath {
+		if err == retrodep.ErrorNeedImportPath {
 			log.Errorf("%s: %s", src.Path, err)
 			fmt.Fprintln(os.Stderr,
 				"Provide import path with -importpath")
@@ -82,11 +82,11 @@ func getProject(src *backvendor.GoSource, importPath string) *backvendor.RepoPat
 	return main
 }
 
-func showTopLevel(src *backvendor.GoSource) {
+func showTopLevel(src *retrodep.GoSource) {
 	main := getProject(src, *importPath)
 	project, err := src.DescribeProject(main, src.Path)
 	switch err {
-	case backvendor.ErrorVersionNotFound:
+	case retrodep.ErrorVersionNotFound:
 		displayUnknown("*" + main.Root)
 	case nil:
 		display(*template, "*"+main.Root, project)
@@ -95,7 +95,7 @@ func showTopLevel(src *backvendor.GoSource) {
 	}
 }
 
-func showVendored(src *backvendor.GoSource) {
+func showVendored(src *retrodep.GoSource) {
 	vendored, err := src.VendoredProjects()
 	if err != nil {
 		log.Fatal(err)
@@ -113,7 +113,7 @@ func showVendored(src *backvendor.GoSource) {
 		project := vendored[repo]
 		vp, err := src.DescribeVendoredProject(project)
 		switch err {
-		case backvendor.ErrorVersionNotFound:
+		case retrodep.ErrorVersionNotFound:
 			displayUnknown(project.Root)
 		case nil:
 			display(*template, project.Root, vp)
@@ -142,7 +142,7 @@ func readExcludeFile() []string {
 	return excludes
 }
 
-func processArgs(args []string) []*backvendor.GoSource {
+func processArgs(args []string) []*retrodep.GoSource {
 	progName := filepath.Base(args[0])
 
 	// Stop the default behaviour of printing errors and exiting.
@@ -179,14 +179,14 @@ func processArgs(args []string) []*backvendor.GoSource {
 	if *debugFlag {
 		level = logging.DEBUG
 	}
-	logging.SetLevel(level, "backvendor")
+	logging.SetLevel(level, "retrodep")
 
 	excludeGlobs := readExcludeFile()
 	path := flag.Arg(0)
-	sources, err := backvendor.FindGoSources(path, excludeGlobs)
+	sources, err := retrodep.FindGoSources(path, excludeGlobs)
 	if err != nil {
-		if err == backvendor.ErrorNoGo {
-			return []*backvendor.GoSource{}
+		if err == retrodep.ErrorNoGo {
+			return []*retrodep.GoSource{}
 		}
 
 		log.Fatal(err)

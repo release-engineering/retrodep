@@ -11,16 +11,16 @@ Installation
 ------------
 
 ```
-go get github.com/release-engineering/backvendor
+go get github.com/release-engineering/retrodep
 ```
 
 Running
 -------
 
 ```
-$ backvendor -h
-backvendor: help requested
-usage: backvendor [OPTION]... PATH
+$ retrodep -h
+retrodep: help requested
+usage: retrodep [OPTION]... PATH
   -debug
         show debugging output
   -deps
@@ -38,19 +38,19 @@ usage: backvendor [OPTION]... PATH
   -x    exit on the first failure
 ```
 
-In many cases backvendor can work out the import path for the top-level project. In those cases, simply supply the directory name to examine:
+In many cases retrodep can work out the import path for the top-level project. In those cases, simply supply the directory name to examine:
 ```
-$ backvendor src
+$ retrodep src
 ```
 
 If it cannot determine the import path, provide it with -importpath:
 ```
-$ backvendor -importpath github.com/example/name src
+$ retrodep -importpath github.com/example/name src
 ```
 
 By default both the top-level project and its vendored dependencies are examined. To ignore vendored dependencies supply -deps=false:
 ```
-$ backvendor -deps=false -importpath github.com/example/name src
+$ retrodep -deps=false -importpath github.com/example/name src
 ```
 
 If there are additional local files not expected to be part of the upstream version they can be excluded:
@@ -61,14 +61,14 @@ Dockerfile
 $ ls -d src/Dockerfile src/.git
 src/Dockerfile
 src/.git
-$ backvendor -exclude-from=exclusions src
+$ retrodep -exclude-from=exclusions src
 ```
 
 Example output
 --------------
 
 ```
-$ backvendor -importpath github.com/docker/distribution go/src/github.com/docker/distribution
+$ retrodep -importpath github.com/docker/distribution go/src/github.com/docker/distribution
 *github.com/docker/distribution@90705d2fb81dda1466be49bd958ed8a0dd9a6145 ~v2.6.0rc.1-1.20180831002537-90705d2fb81d
 github.com/opencontainers/image-spec@87998cd070d9e7a2c79f8b153a26bea0425582e5 =v1.0.0 ~v1.0.0
 github.com/ncw/swift@b964f2ca856aac39885e258ad25aec08d5f64ee6 ~v1.0.25-0.20160617142549-b964f2ca856a
