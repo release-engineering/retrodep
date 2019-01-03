@@ -34,7 +34,7 @@ usage: retrodep [OPTION]... PATH
   -only-importpath
         only show the top-level import path
   -template string
-        go template to use for output with Rev, Tag and Ver
+        go template to use for output with Repo, Rev, Tag and Ver
   -x    exit on the first failure
 ```
 

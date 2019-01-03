@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ var onlyImportPath = flag.Bool("only-importpath", false, "only show the top-leve
 var depsFlag = flag.Bool("deps", true, "show vendored dependencies")
 var excludeFrom = flag.String("exclude-from", "", "ignore directory entries matching globs in `exclusions`")
 var debugFlag = flag.Bool("debug", false, "show debugging output")
-var template = flag.String("template", "", "go template to use for output with Rev, Tag and Ver")
+var template = flag.String("template", "", "go template to use for output with Repo, Rev, Tag and Ver")
 var exitFirst = flag.Bool("x", false, "exit on the first failure")
 
 var errorShown = false
