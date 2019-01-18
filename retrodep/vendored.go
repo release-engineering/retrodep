@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -230,6 +230,9 @@ func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, subPath strin
 
 // Reference describes the origin of a vendored project.
 type Reference struct {
+	// Pkg is the name of the vendored package.
+	Pkg string
+
 	// Repo is the URL for the repository holding the source code.
 	Repo string
 
@@ -335,6 +338,7 @@ func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, 
 			}
 
 			return &Reference{
+				Pkg:  project.Root,
 				Repo: project.Repo,
 				Rev:  match,
 				Ver:  ver,
@@ -364,6 +368,7 @@ func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, 
 		}
 
 		return &Reference{
+			Pkg:  project.Root,
 			Repo: project.Repo,
 			Tag:  match,
 			Rev:  rev,
@@ -395,6 +400,7 @@ func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, 
 	}
 
 	return &Reference{
+		Pkg:  project.Root,
 		Repo: project.Repo,
 		Rev:  rev,
 		Ver:  ver,

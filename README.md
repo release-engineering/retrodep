@@ -18,24 +18,25 @@ Running
 -------
 
 ```
-$ retrodep -h
 retrodep: help requested
 usage: retrodep [OPTION]... PATH
   -debug
-        show debugging output
+    	show debugging output
   -deps
-        show vendored dependencies (default true)
-  -exclude-from string
-        ignore glob patterns listed in provided file
+    	show vendored dependencies (default true)
+  -exclude-from exclusions
+    	ignore directory entries matching globs in exclusions
   -help
-        print help
+    	print help
   -importpath string
-        top-level import path
+    	top-level import path
+  -o string
+    	output format, one of: go-template=...
   -only-importpath
-        only show the top-level import path
+    	only show the top-level import path
   -template string
-        go template to use for output with Repo, Rev, Tag and Ver
-  -x    exit on the first failure
+    	go template to use for output with Pkg, Repo, Rev, Tag and Ver (deprecated)
+  -x	exit on the first failure
 ```
 
 In many cases retrodep can work out the import path for the top-level project. In those cases, simply supply the directory name to examine:

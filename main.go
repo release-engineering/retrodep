@@ -19,18 +19,18 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"text/template"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"text/template"
 
 	"github.com/op/go-logging"
 	"github.com/release-engineering/retrodep/retrodep"
 )
 
-const defaultTemplate string = "{{if .Rev}}@{{.Rev}}{{end}}{{if .Tag}} ={{.Tag}}{{end}}{{if .Ver}} ~{{.Ver}}{{end}}"
+const defaultTemplate string = "{{.Pkg}}{{if .Rev}}@{{.Rev}}{{end}}{{if .Tag}} ={{.Tag}}{{end}}{{if .Ver}} ~{{.Ver}}{{end}}"
 
 var log = logging.MustGetLogger("retrodep")
 
@@ -40,10 +40,12 @@ var onlyImportPath = flag.Bool("only-importpath", false, "only show the top-leve
 var depsFlag = flag.Bool("deps", true, "show vendored dependencies")
 var excludeFrom = flag.String("exclude-from", "", "ignore directory entries matching globs in `exclusions`")
 var debugFlag = flag.Bool("debug", false, "show debugging output")
-var templateArg = flag.String("template", "", "go template to use for output with Repo, Rev, Tag and Ver")
+var outputArg = flag.String("o", "", "output format, one of: go-template=...")
+var templateArg = flag.String("template", "", "go template to use for output with Pkg, Repo, Rev, Tag and Ver (deprecated)")
 var exitFirst = flag.Bool("x", false, "exit on the first failure")
 
 var errorShown = false
+var usage func(string)
 
 func displayUnknown(name string) {
 	fmt.Printf("%s ?\n", name)
@@ -88,7 +90,7 @@ func showTopLevel(tmpl *template.Template, src *retrodep.GoSource) {
 	case retrodep.ErrorVersionNotFound:
 		displayUnknown("*" + main.Root)
 	case nil:
-		display(tmpl, "*"+main.Root, project)
+		display(tmpl, "*", project)
 	default:
 		log.Fatalf("%s: %s", src.Path, err)
 	}
@@ -115,7 +117,7 @@ func showVendored(tmpl *template.Template, src *retrodep.GoSource) {
 		case retrodep.ErrorVersionNotFound:
 			displayUnknown(project.Root)
 		case nil:
-			display(tmpl, project.Root, vp)
+			display(tmpl, "", vp)
 		default:
 			log.Fatalf("%s: %s\n", project.Root, err)
 		}
@@ -152,7 +154,7 @@ func processArgs(args []string) []*retrodep.GoSource {
 	cli.Usage = func() {}
 
 	usageMsg := fmt.Sprintf("usage: %s [OPTION]... PATH", progName)
-	usage := func(flaw string) {
+	usage = func(flaw string) {
 		log.Fatalf("%s: %s\n%s\n", progName, flaw, usageMsg)
 	}
 	err := cli.Parse(args[1:])
@@ -197,8 +199,16 @@ func processArgs(args []string) []*retrodep.GoSource {
 func main() {
 	srcs := processArgs(os.Args)
 
-	customTemplate := *templateArg
-	if customTemplate == "" {
+	var customTemplate string
+	switch {
+	case *outputArg != "":
+		customTemplate = strings.TrimPrefix(*outputArg, "go-template=")
+		if customTemplate == *outputArg {
+			usage("unknown output format")
+		}
+	case *templateArg != "":
+		customTemplate = "{{.Pkg}}" + *templateArg
+	default:
 		customTemplate = defaultTemplate
 	}
 	tmpl, err := template.New("output").Parse(customTemplate)
