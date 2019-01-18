@@ -239,7 +239,7 @@ type Reference struct {
 	Tag string
 
 	// Rev is the upstream revision from which the vendored
-	// copy was taken. If this is not known Reference is "".
+	// copy was taken. If this is not known Rev is "".
 	Rev string
 
 	// Ver is the semantic version or pseudo-version for the
