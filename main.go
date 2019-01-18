@@ -19,6 +19,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"text/template"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -29,6 +30,8 @@ import (
 	"github.com/release-engineering/retrodep/retrodep"
 )
 
+const defaultTemplate string = "{{if .Rev}}@{{.Rev}}{{end}}{{if .Tag}} ={{.Tag}}{{end}}{{if .Ver}} ~{{.Ver}}{{end}}"
+
 var log = logging.MustGetLogger("retrodep")
 
 var helpFlag = flag.Bool("help", false, "print help")
@@ -37,7 +40,7 @@ var onlyImportPath = flag.Bool("only-importpath", false, "only show the top-leve
 var depsFlag = flag.Bool("deps", true, "show vendored dependencies")
 var excludeFrom = flag.String("exclude-from", "", "ignore directory entries matching globs in `exclusions`")
 var debugFlag = flag.Bool("debug", false, "show debugging output")
-var template = flag.String("template", "", "go template to use for output with Repo, Rev, Tag and Ver")
+var templateArg = flag.String("template", "", "go template to use for output with Repo, Rev, Tag and Ver")
 var exitFirst = flag.Bool("x", false, "exit on the first failure")
 
 var errorShown = false
@@ -53,14 +56,10 @@ func displayUnknown(name string) {
 	}
 }
 
-func display(template string, name string, ref *retrodep.Reference) {
+func display(tmpl *template.Template, name string, ref *retrodep.Reference) {
 	var builder strings.Builder
 	builder.WriteString(name)
-	var tmpl, err = retrodep.Display(template)
-	if err != nil {
-		log.Fatalf("Error parsing supplied template. %s ", err)
-	}
-	err = tmpl.Execute(&builder, ref)
+	err := tmpl.Execute(&builder, ref)
 	if err != nil {
 		log.Fatalf("Error generating output. %s ", err)
 	}
@@ -82,20 +81,20 @@ func getProject(src *retrodep.GoSource, importPath string) *retrodep.RepoPath {
 	return main
 }
 
-func showTopLevel(src *retrodep.GoSource) {
+func showTopLevel(tmpl *template.Template, src *retrodep.GoSource) {
 	main := getProject(src, *importPath)
 	project, err := src.DescribeProject(main, src.Path)
 	switch err {
 	case retrodep.ErrorVersionNotFound:
 		displayUnknown("*" + main.Root)
 	case nil:
-		display(*template, "*"+main.Root, project)
+		display(tmpl, "*"+main.Root, project)
 	default:
 		log.Fatalf("%s: %s", src.Path, err)
 	}
 }
 
-func showVendored(src *retrodep.GoSource) {
+func showVendored(tmpl *template.Template, src *retrodep.GoSource) {
 	vendored, err := src.VendoredProjects()
 	if err != nil {
 		log.Fatal(err)
@@ -116,7 +115,7 @@ func showVendored(src *retrodep.GoSource) {
 		case retrodep.ErrorVersionNotFound:
 			displayUnknown(project.Root)
 		case nil:
-			display(*template, project.Root, vp)
+			display(tmpl, project.Root, vp)
 		default:
 			log.Fatalf("%s: %s\n", project.Root, err)
 		}
@@ -198,14 +197,22 @@ func processArgs(args []string) []*retrodep.GoSource {
 func main() {
 	srcs := processArgs(os.Args)
 
+	customTemplate := *templateArg
+	if customTemplate == "" {
+		customTemplate = defaultTemplate
+	}
+	tmpl, err := template.New("output").Parse(customTemplate)
+	if err != nil {
+		log.Fatal(err)
+	}
 	for _, src := range srcs {
 		if *onlyImportPath {
 			main := getProject(src, *importPath)
 			fmt.Println("*" + main.Root)
 		} else {
-			showTopLevel(src)
+			showTopLevel(tmpl, src)
 			if *depsFlag {
-				showVendored(src)
+				showVendored(tmpl, src)
 			}
 		}
 	}
