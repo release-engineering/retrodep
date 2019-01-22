@@ -230,7 +230,15 @@ func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, subPath strin
 
 // Reference describes the origin of a vendored project.
 type Reference struct {
-	// Pkg is the name of the vendored package.
+	// TopPkg is the name of the top-level package this package is
+	// vendored into, or "" if Pkg is the top-level package.
+	TopPkg string
+
+	// TopVer is the Ver string (see below) for the TopPkg, if
+	// defined.
+	TopVer string
+
+	// Pkg is the name of the package this Reference relates to.
 	Pkg string
 
 	// Repo is the URL for the repository holding the source code.
@@ -273,8 +281,13 @@ func chooseBestTag(tags []string) string {
 // DescribeProject attempts to identify the tag in the version control
 // system which corresponds to the project, based on comparison with
 // files in dir. Vendored files and files whose names begin with "."
-// are ignored.
-func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, error) {
+// are ignored. If top is not nil, it should be a Reference to the
+// top-level package this project is vendored into.
+func (src GoSource) DescribeProject(
+	project *RepoPath,
+	dir string,
+	top *Reference,
+) (*Reference, error) {
 	wt, err := NewWorkingTree(&project.RepoRoot)
 	if err != nil {
 		return nil, err
@@ -323,6 +336,12 @@ func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, 
 	// project).
 	strip := src.usesGodep && dir != src.Path
 
+	var toppkg, topver string
+	if top != nil {
+		toppkg = top.Pkg
+		topver = top.Ver
+	}
+
 	// First try to match against a specific version, if specified
 	if project.Version != "" {
 		matches, err := matchFromRefs(strip, hashes, wt,
@@ -338,10 +357,12 @@ func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, 
 			}
 
 			return &Reference{
-				Pkg:  project.Root,
-				Repo: project.Repo,
-				Rev:  match,
-				Ver:  ver,
+				TopPkg: toppkg,
+				TopVer: topver,
+				Pkg:    project.Root,
+				Repo:   project.Repo,
+				Rev:    match,
+				Ver:    ver,
 			}, nil
 		case ErrorVersionNotFound:
 			// No match, carry on
@@ -368,11 +389,13 @@ func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, 
 		}
 
 		return &Reference{
-			Pkg:  project.Root,
-			Repo: project.Repo,
-			Tag:  match,
-			Rev:  rev,
-			Ver:  match,
+			TopPkg: toppkg,
+			TopVer: topver,
+			Pkg:    project.Root,
+			Repo:   project.Repo,
+			Tag:    match,
+			Rev:    rev,
+			Ver:    match,
 		}, nil
 	case ErrorVersionNotFound:
 		// No match, carry on
@@ -400,19 +423,21 @@ func (src GoSource) DescribeProject(project *RepoPath, dir string) (*Reference, 
 	}
 
 	return &Reference{
-		Pkg:  project.Root,
-		Repo: project.Repo,
-		Rev:  rev,
-		Ver:  ver,
+		TopPkg: toppkg,
+		TopVer: topver,
+		Pkg:    project.Root,
+		Repo:   project.Repo,
+		Rev:    rev,
+		Ver:    ver,
 	}, nil
 }
 
 // DescribeVendoredProject attempts to identify the tag in the version
 // control system which corresponds to the vendored copy of the
 // project.
-func (src GoSource) DescribeVendoredProject(project *RepoPath) (*Reference, error) {
+func (src GoSource) DescribeVendoredProject(project *RepoPath, top *Reference) (*Reference, error) {
 	projRootImportPath := filepath.FromSlash(project.Root)
 	projDir := filepath.Join(src.Vendor(), projRootImportPath)
-	ref, err := src.DescribeProject(project, projDir)
+	ref, err := src.DescribeProject(project, projDir, top)
 	return ref, err
 }

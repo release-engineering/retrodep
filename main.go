@@ -30,7 +30,7 @@ import (
 	"github.com/release-engineering/retrodep/retrodep"
 )
 
-const defaultTemplate string = "{{.Pkg}}{{if .Rev}}@{{.Rev}}{{end}}{{if .Tag}} ={{.Tag}}{{end}}{{if .Ver}} ~{{.Ver}}{{end}}"
+const defaultTemplate string = "{{if .TopPkg}}{{.TopPkg}}:{{.TopVer}}/{{end}}{{.Pkg}}:{{.Ver}}"
 
 var log = logging.MustGetLogger("retrodep")
 
@@ -83,20 +83,30 @@ func getProject(src *retrodep.GoSource, importPath string) *retrodep.RepoPath {
 	return main
 }
 
-func showTopLevel(tmpl *template.Template, src *retrodep.GoSource) {
+func showTopLevel(tmpl *template.Template, src *retrodep.GoSource) *retrodep.Reference {
 	main := getProject(src, *importPath)
-	project, err := src.DescribeProject(main, src.Path)
+	project, err := src.DescribeProject(main, src.Path, nil)
+	var topLevelMarker string
+	if *templateArg != "" {
+		topLevelMarker = "*"
+	}
 	switch err {
 	case retrodep.ErrorVersionNotFound:
-		displayUnknown("*" + main.Root)
+		displayUnknown(topLevelMarker + main.Root)
 	case nil:
-		display(tmpl, "*", project)
+		display(tmpl, topLevelMarker, project)
 	default:
 		log.Fatalf("%s: %s", src.Path, err)
 	}
+
+	if err != nil {
+		return nil
+	}
+
+	return project
 }
 
-func showVendored(tmpl *template.Template, src *retrodep.GoSource) {
+func showVendored(tmpl *template.Template, src *retrodep.GoSource, top *retrodep.Reference) {
 	vendored, err := src.VendoredProjects()
 	if err != nil {
 		log.Fatal(err)
@@ -112,7 +122,7 @@ func showVendored(tmpl *template.Template, src *retrodep.GoSource) {
 	// Describe each vendored project
 	for _, repo := range repos {
 		project := vendored[repo]
-		vp, err := src.DescribeVendoredProject(project)
+		vp, err := src.DescribeVendoredProject(project, top)
 		switch err {
 		case retrodep.ErrorVersionNotFound:
 			displayUnknown(project.Root)
@@ -220,9 +230,9 @@ func main() {
 			main := getProject(src, *importPath)
 			fmt.Println("*" + main.Root)
 		} else {
-			showTopLevel(tmpl, src)
+			top := showTopLevel(tmpl, src)
 			if *depsFlag {
-				showVendored(tmpl, src)
+				showVendored(tmpl, src, top)
 			}
 		}
 	}
