@@ -288,6 +288,7 @@ func (src GoSource) DescribeProject(
 	dir string,
 	top *Reference,
 ) (*Reference, error) {
+	var ref *Reference
 	wt, err := NewWorkingTree(&project.RepoRoot)
 	if err != nil {
 		return nil, err
@@ -356,14 +357,15 @@ func (src GoSource) DescribeProject(
 				return nil, err
 			}
 
-			return &Reference{
+			ref = &Reference{
 				TopPkg: toppkg,
 				TopVer: topver,
 				Pkg:    project.Root,
 				Repo:   project.Repo,
 				Rev:    match,
 				Ver:    ver,
-			}, nil
+			}
+			return ref, nil
 		case ErrorVersionNotFound:
 			// No match, carry on
 		default:
@@ -375,7 +377,7 @@ func (src GoSource) DescribeProject(
 	// Second try matching against tags for semantic versions
 	tags, err := wt.VersionTags()
 	if err != nil {
-		return nil, err
+		return ref, err
 	}
 
 	matches, err := matchFromRefs(strip, hashes, wt, subPath, tags)
@@ -388,7 +390,7 @@ func (src GoSource) DescribeProject(
 			return nil, err
 		}
 
-		return &Reference{
+		ref = &Reference{
 			TopPkg: toppkg,
 			TopVer: topver,
 			Pkg:    project.Root,
@@ -396,7 +398,8 @@ func (src GoSource) DescribeProject(
 			Tag:    match,
 			Rev:    rev,
 			Ver:    match,
-		}, nil
+		}
+		return ref, nil
 	case ErrorVersionNotFound:
 		// No match, carry on
 	default:
@@ -407,29 +410,30 @@ func (src GoSource) DescribeProject(
 	// Third try each revision
 	revs, err := wt.Revisions()
 	if err != nil {
-		return nil, err
+		return ref, err
 	}
 
 	matches, err = matchFromRefs(strip, hashes, wt, subPath, revs)
 	if err != nil {
-		return nil, err
+		return ref, err
 	}
 
 	// Use newest matching revision
 	rev := matches[0]
 	ver, err := PseudoVersion(wt, rev)
 	if err != nil {
-		return nil, err
+		return ref, err
 	}
 
-	return &Reference{
+	ref = &Reference{
 		TopPkg: toppkg,
 		TopVer: topver,
 		Pkg:    project.Root,
 		Repo:   project.Repo,
 		Rev:    rev,
 		Ver:    ver,
-	}, nil
+	}
+	return ref, nil
 }
 
 // DescribeVendoredProject attempts to identify the tag in the version
