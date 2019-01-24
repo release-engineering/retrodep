@@ -103,10 +103,6 @@ func showTopLevel(tmpl *template.Template, src *retrodep.GoSource) *retrodep.Ref
 		log.Fatalf("%s: %s", src.Path, err)
 	}
 
-	if err != nil {
-		return nil
-	}
-
 	return project
 }
 
