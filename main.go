@@ -30,7 +30,11 @@ import (
 	"github.com/release-engineering/retrodep/retrodep"
 )
 
-const defaultTemplate string = "{{if .TopPkg}}{{.TopPkg}}:{{.TopVer}}/{{end}}{{.Pkg}}:{{.Ver}}"
+const defaultTemplate string = `
+  {{- if .TopPkg -}}
+	{{.TopPkg}}:{{or .TopVer "?"}}/
+  {{- end -}}
+  {{.Pkg}}:{{or .Ver "?"}}`
 
 var log = logging.MustGetLogger("retrodep")
 
