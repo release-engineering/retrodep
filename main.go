@@ -47,8 +47,12 @@ var exitFirst = flag.Bool("x", false, "exit on the first failure")
 var errorShown = false
 var usage func(string)
 
-func displayUnknown(name string) {
-	fmt.Printf("%s ?\n", name)
+func displayUnknown(tmpl *template.Template, name string, ref *retrodep.Reference, root string) {
+	if ref == nil || *templateArg != "" {
+		fmt.Printf("%s%s ?\n", name, root)
+	} else {
+		display(tmpl, name, ref)
+	}
 	if !errorShown {
 		errorShown = true
 		fmt.Fprintln(os.Stderr, "error: not all versions identified")
@@ -92,7 +96,7 @@ func showTopLevel(tmpl *template.Template, src *retrodep.GoSource) *retrodep.Ref
 	}
 	switch err {
 	case retrodep.ErrorVersionNotFound:
-		displayUnknown(topLevelMarker + main.Root)
+		displayUnknown(tmpl, topLevelMarker, project, main.Root)
 	case nil:
 		display(tmpl, topLevelMarker, project)
 	default:
@@ -125,7 +129,7 @@ func showVendored(tmpl *template.Template, src *retrodep.GoSource, top *retrodep
 		vp, err := src.DescribeVendoredProject(project, top)
 		switch err {
 		case retrodep.ErrorVersionNotFound:
-			displayUnknown(project.Root)
+			displayUnknown(tmpl, "", vp, project.Root)
 		case nil:
 			display(tmpl, "", vp)
 		default:
