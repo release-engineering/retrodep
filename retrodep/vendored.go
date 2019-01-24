@@ -343,6 +343,13 @@ func (src GoSource) DescribeProject(
 		topver = top.Ver
 	}
 
+	ref = &Reference{
+		TopPkg: toppkg,
+		TopVer: topver,
+		Pkg:    project.Root,
+		Repo:   project.Repo,
+	}
+
 	// First try to match against a specific version, if specified
 	if project.Version != "" {
 		matches, err := matchFromRefs(strip, hashes, wt,
@@ -357,14 +364,8 @@ func (src GoSource) DescribeProject(
 				return nil, err
 			}
 
-			ref = &Reference{
-				TopPkg: toppkg,
-				TopVer: topver,
-				Pkg:    project.Root,
-				Repo:   project.Repo,
-				Rev:    match,
-				Ver:    ver,
-			}
+			ref.Rev = match
+			ref.Ver = ver
 			return ref, nil
 		case ErrorVersionNotFound:
 			// No match, carry on
@@ -390,15 +391,9 @@ func (src GoSource) DescribeProject(
 			return nil, err
 		}
 
-		ref = &Reference{
-			TopPkg: toppkg,
-			TopVer: topver,
-			Pkg:    project.Root,
-			Repo:   project.Repo,
-			Tag:    match,
-			Rev:    rev,
-			Ver:    match,
-		}
+		ref.Tag = match
+		ref.Rev = rev
+		ref.Ver = match
 		return ref, nil
 	case ErrorVersionNotFound:
 		// No match, carry on
@@ -425,14 +420,8 @@ func (src GoSource) DescribeProject(
 		return ref, err
 	}
 
-	ref = &Reference{
-		TopPkg: toppkg,
-		TopVer: topver,
-		Pkg:    project.Root,
-		Repo:   project.Repo,
-		Rev:    rev,
-		Ver:    ver,
-	}
+	ref.Rev = rev
+	ref.Ver = ver
 	return ref, nil
 }
 
