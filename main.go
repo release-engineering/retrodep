@@ -209,9 +209,7 @@ func processArgs(args []string) []*retrodep.GoSource {
 	return sources
 }
 
-func main() {
-	srcs := processArgs(os.Args)
-
+func getTemplate() string {
 	var customTemplate string
 	switch {
 	case *outputArg != "":
@@ -225,6 +223,14 @@ func main() {
 	default:
 		customTemplate = defaultTemplate
 	}
+
+	return customTemplate
+}
+
+func main() {
+	srcs := processArgs(os.Args)
+
+	customTemplate := getTemplate()
 	tmpl, err := template.New("output").Parse(customTemplate)
 	if err != nil {
 		log.Fatal(err)
