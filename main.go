@@ -218,6 +218,7 @@ func main() {
 		}
 	case *templateArg != "":
 		customTemplate = "{{.Pkg}}" + *templateArg
+		log.Warning("-template is deprecated, use -o go-template= instead")
 	default:
 		customTemplate = defaultTemplate
 	}
