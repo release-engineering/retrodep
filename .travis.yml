@@ -2,6 +2,7 @@ language: go
 branches:
   only:
   - master
+  - v0
 sudo: false
 before_install:
   - go get github.com/mattn/goveralls
