@@ -65,6 +65,17 @@ src/.git
 $ retrodep -exclude-from=exclusions src
 ```
 
+Exit code
+---------
+
+| Exit code | Reason                                           |
+| ---------:|:------------------------------------------------ |
+| 0         | all versions were found                          |
+| 1         | any error was encountered other than those below |
+| 2         | a version was missing                            |
+| 3         | import path needed but not supplied              |
+| 4         | no Go source code was found at the provided path |
+
 Example output
 --------------
 

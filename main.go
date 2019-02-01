@@ -53,7 +53,7 @@ func displayUnknown(name string) {
 		errorShown = true
 		fmt.Fprintln(os.Stderr, "error: not all versions identified")
 		if *exitFirst {
-			os.Exit(1)
+			os.Exit(2)
 		}
 	}
 }
@@ -75,7 +75,7 @@ func getProject(src *retrodep.GoSource, importPath string) *retrodep.RepoPath {
 			log.Errorf("%s: %s", src.Path, err)
 			fmt.Fprintln(os.Stderr,
 				"Provide import path with -importpath")
-			os.Exit(1)
+			os.Exit(3)
 		}
 		log.Fatalf("%s: %s", src.Path, err)
 	}
@@ -197,7 +197,10 @@ func processArgs(args []string) []*retrodep.GoSource {
 	sources, err := retrodep.FindGoSources(path, excludeGlobs)
 	if err != nil {
 		if err == retrodep.ErrorNoGo {
-			return []*retrodep.GoSource{}
+			fmt.Fprintf(os.Stderr,
+				"%s: no Go source code at %s\n",
+				progName, path)
+			os.Exit(4)
 		}
 
 		log.Fatal(err)
@@ -239,6 +242,6 @@ func main() {
 	}
 
 	if errorShown {
-		os.Exit(1)
+		os.Exit(2)
 	}
 }
