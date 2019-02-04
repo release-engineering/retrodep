@@ -1,5 +1,5 @@
-Backvendor
-==========
+Retrodep
+========
 
 This command inspects a Go source tree with vendored packages and attempts to work out the versions of the packages which are vendored, as well as the version of top-level package itself.
 
