@@ -1,6 +1,11 @@
 Retrodep
 ========
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/release-engineering/retrodep)](https://goreportcard.com/report/github.com/release-engineering/retrodep)
+[![GoDoc](https://godoc.org/github.com/release-engineering/retrodep?status.png)](https://godoc.org/github.com/release-engineering/retrodep)
+[![Build Status](https://travis-ci.org/release-engineering/retrodep.svg?branch=master)](https://travis-ci.org/release-engineering/retrodep)
+[![Coverage Status](https://coveralls.io/repos/github/release-engineering/retrodep/badge.svg)](https://coveralls.io/github/release-engineering/retrodep)
+
 This command inspects a Go source tree with vendored packages and attempts to work out the versions of the packages which are vendored, as well as the version of top-level package itself.
 
 It does this by comparing file hashes of the packages with those from the upstream repositories.
