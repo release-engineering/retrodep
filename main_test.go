@@ -15,7 +15,76 @@
 
 package main
 
-import "testing"
+import (
+	"io"
+	"io/ioutil"
+	"os"
+	"syscall"
+	"testing"
+
+	"github.com/release-engineering/retrodep/retrodep"
+)
+
+func captureStdout(t *testing.T) (r io.Reader, reset func()) {
+	stdout := int(os.Stdout.Fd())
+	orig, err := syscall.Dup(stdout)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = syscall.Dup2(int(w.Fd()), stdout)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reset = func() {
+		w.Close()
+		err := syscall.Dup2(orig, stdout)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	return
+}
+
+func TestDisplayUnknown(t *testing.T) {
+	tcs := []struct {
+		name     string
+		ref      *retrodep.Reference
+		template string
+		expected string
+	}{
+		{
+			"nil ref",
+			nil,
+			"",
+			"*example.com/foo ?\n",
+		},
+	}
+
+	for _, tc := range tcs {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			*templateArg = tc.template
+			r, reset := captureStdout(t)
+			displayUnknown(nil, "*", nil, "example.com/foo")
+			reset()
+			output, err := ioutil.ReadAll(r)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(output) != tc.expected {
+				t.Errorf("expected %v but got %v",
+					tc.expected, string(output))
+			}
+		})
+	}
+}
 
 func TestGetTemplate(t *testing.T) {
 	tcs := []struct {
