@@ -51,11 +51,11 @@ var exitFirst = flag.Bool("x", false, "exit on the first failure")
 var errorShown = false
 var usage func(string)
 
-func displayUnknown(tmpl *template.Template, name string, ref *retrodep.Reference, root string) {
+func displayUnknown(tmpl *template.Template, topLevelMarker string, ref *retrodep.Reference, root string) {
 	if ref == nil || *templateArg != "" {
-		fmt.Printf("%s%s ?\n", name, root)
+		fmt.Printf("%s%s ?\n", topLevelMarker, root)
 	} else {
-		display(tmpl, name, ref)
+		display(tmpl, topLevelMarker, ref)
 	}
 	if !errorShown {
 		errorShown = true
@@ -66,9 +66,9 @@ func displayUnknown(tmpl *template.Template, name string, ref *retrodep.Referenc
 	}
 }
 
-func display(tmpl *template.Template, name string, ref *retrodep.Reference) {
+func display(tmpl *template.Template, topLevelMarker string, ref *retrodep.Reference) {
 	var builder strings.Builder
-	builder.WriteString(name)
+	builder.WriteString(topLevelMarker)
 	err := tmpl.Execute(&builder, ref)
 	if err != nil {
 		log.Fatalf("Error generating output. %s ", err)
