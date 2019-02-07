@@ -51,9 +51,9 @@ var exitFirst = flag.Bool("x", false, "exit on the first failure")
 var errorShown = false
 var usage func(string)
 
-func displayUnknown(tmpl *template.Template, topLevelMarker string, ref *retrodep.Reference, root string) {
+func displayUnknown(tmpl *template.Template, topLevelMarker string, ref *retrodep.Reference, projectRoot string) {
 	if ref == nil || *templateArg != "" {
-		fmt.Printf("%s%s ?\n", topLevelMarker, root)
+		fmt.Printf("%s%s ?\n", topLevelMarker, projectRoot)
 	} else {
 		display(tmpl, topLevelMarker, ref)
 	}
