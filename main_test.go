@@ -53,15 +53,21 @@ func captureStdout(t *testing.T) (r io.Reader, reset func()) {
 
 func TestDisplayUnknown(t *testing.T) {
 	tcs := []struct {
-		name     string
-		ref      *retrodep.Reference
-		template string
-		expected string
+		name        string
+		ref         *retrodep.Reference
+		templateArg string
+		expected    string
 	}{
 		{
-			"nil ref",
+			"nil ref, empty templateArg",
 			nil,
 			"",
+			"*example.com/foo ?\n",
+		},
+		{
+			"with ref, non-zero templateArg",
+			&retrodep.Reference{Pkg: "example.com/foo"},
+			"filled templateArg",
 			"*example.com/foo ?\n",
 		},
 	}
@@ -70,9 +76,9 @@ func TestDisplayUnknown(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
-			*templateArg = tc.template
+			*templateArg = tc.templateArg
 			r, reset := captureStdout(t)
-			displayUnknown(nil, "*", nil, "example.com/foo")
+			displayUnknown(nil, "*", tc.ref, "example.com/foo")
 			reset()
 			output, err := ioutil.ReadAll(r)
 			if err != nil {
