@@ -32,8 +32,7 @@ import (
 
 const defaultTemplate string = `
   {{- if .TopPkg -}}
-	{{.TopPkg}}:{{or .TopVer "?"}}/
-  {{- end -}}
+	{{.TopPkg}}:{{or .TopVer "?"}} {{ end -}}
   {{.Pkg}}:{{or .Ver "?"}}`
 
 var log = logging.MustGetLogger("retrodep")
