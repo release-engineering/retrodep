@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -33,6 +33,8 @@ import (
 
 var vcsRepoRootForImportPath = vcs.RepoRootForImportPath
 
+// RepoPath is a vcs.RepoRoot along with the sub-path within the
+// repository, and the version.
 type RepoPath struct {
 	vcs.RepoRoot
 
@@ -349,7 +351,7 @@ func importPathFromFilepath(path string) (string, bool) {
 		return "", false
 	}
 
-	for i := len(components) - 2; i >= 0; i -= 1 {
+	for i := len(components) - 2; i >= 0; i-- {
 		// Avoid false positives like:
 		// github.com/release-engineering/retrodep/retrodep/testdata/gosource
 		switch components[i] {
@@ -508,6 +510,9 @@ func (src GoSource) Project(importPath string) (*RepoPath, error) {
 	}, err
 }
 
+// RepoPathForImportPath takes an import path and returns a *RepoPath
+// for it, based on possible replacements within the Go source
+// configuration.
 func (src GoSource) RepoPathForImportPath(importPath string) (*RepoPath, error) {
 	// First look up replacements
 	pth := importPath

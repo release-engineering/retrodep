@@ -19,12 +19,14 @@ type glideConf struct {
 	}
 }
 
+// Import represents an imported package.
 type Import struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
 	Repo    string `json:"repo"`
 }
 
+// Glide represents the glide configuration.
 type Glide struct {
 	Package string
 	Imports []Import

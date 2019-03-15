@@ -322,7 +322,7 @@ func (src GoSource) DescribeProject(
 		return nil, err
 	}
 
-	for path, _ := range hashes.hashes {
+	for path := range hashes.hashes {
 		// Ignore dot files (e.g. .git)
 		if strings.HasPrefix(path, ".") {
 			delete(hashes.hashes, path)
