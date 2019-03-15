@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -165,19 +165,30 @@ func NewFileHashes(h Hasher, root string, excludes map[string]struct{}) (*FileHa
 
 // IsSubsetOf returns true if these file hashes are a subset of s.
 func (h *FileHashes) IsSubsetOf(s *FileHashes) bool {
+	return h.Mismatches(s, true) == nil
+}
+
+// Mismatches returns a slice of filenames from h whose hashes
+// mismatch those in s. If failFast is true at most one mismatch will
+// be returned.
+func (h *FileHashes) Mismatches(s *FileHashes, failFast bool) []string {
+	var mismatches []string
 	for path, fileHash := range h.hashes {
 		sh, ok := s.hashes[path]
 		if !ok {
-			// File not present in tag
+			// File not present in s
 			log.Debugf("%s: not present", path)
-			return false
-		}
-		if fileHash != sh {
+			mismatches = append(mismatches, path)
+		} else if fileHash != sh {
 			// Hash does not match
 			log.Debugf("%s: hash mismatch", path)
-			return false
+			mismatches = append(mismatches, path)
+		}
+
+		if failFast && mismatches != nil {
+			return mismatches
 		}
 	}
 
-	return true
+	return mismatches
 }
