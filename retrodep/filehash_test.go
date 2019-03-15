@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 package retrodep
 
 import (
+	"sort"
 	"testing"
 )
 
@@ -144,5 +145,59 @@ func TestIsSubsetOf(t *testing.T) {
 	hashes.hashes["foo"] = FileHash("")
 	if hashes.IsSubsetOf(other) {
 		t.Fail()
+	}
+}
+
+func TestMismatches(t *testing.T) {
+	hasher, ok := NewHasher("git")
+	if !ok {
+		t.Fatal("git unknown to NewHasher")
+	}
+	hashes, err := NewFileHashes(hasher, "testdata/gosource", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if hashes.Mismatches(hashes, false) != nil {
+		t.Fatalf("mismatches self")
+	}
+
+	other := &FileHashes{
+		h:      hasher,
+		hashes: make(map[string]FileHash),
+	}
+	for k, v := range hashes.hashes {
+		other.hashes[k] = v
+	}
+
+	other.hashes["foo"] = FileHash("")
+	if hashes.Mismatches(hashes, false) != nil {
+		t.Fatalf("extra value in s reported as mismatch")
+	}
+
+	eq := func(a sort.StringSlice, b sort.StringSlice) bool {
+		if len(a) != len(b) {
+			return false
+		}
+		a.Sort()
+		b.Sort()
+		for i, v := range a {
+			if b[i] != v {
+				return false
+			}
+		}
+		return true
+	}
+
+	hashes.hashes["foo"] = FileHash("123")
+	hashes.hashes["bar"] = FileHash("123")
+	mismatches := hashes.Mismatches(other, false)
+	if !eq(mismatches, []string{"foo", "bar"}) {
+		t.Errorf("got %v, expected {\"foo\", \"bar\"}", mismatches)
+	}
+
+	mismatches = hashes.Mismatches(other, true)
+	if len(mismatches) != 1 {
+		t.Errorf("too many mismatches returned: %v", mismatches)
 	}
 }
