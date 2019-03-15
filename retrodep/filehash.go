@@ -59,6 +59,7 @@ func (h sha256Hasher) Hash(relativePath, absPath string) (FileHash, error) {
 	return FileHash(hex.EncodeToString(hash.Sum(nil))), nil
 }
 
+// NewHasher returns a new Hasher based on the provided vcs command.
 func NewHasher(vcsCmd string) (Hasher, bool) {
 	switch vcsCmd {
 	case vcsGit:
