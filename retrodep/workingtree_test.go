@@ -155,6 +155,45 @@ func TestPseudoVersion(t *testing.T) {
 	}
 }
 
+// stubWorkingTree is used to build mocks for WorkingTree.
+type stubWorkingTree struct{ anyWorkingTree }
+
+func (wt *stubWorkingTree) TagSync(tag string) error {
+	return nil
+}
+
+func (wt *stubWorkingTree) VersionTags() ([]string, error) {
+	return nil, nil
+}
+
+func (wt *stubWorkingTree) Revisions() ([]string, error) {
+	return nil, nil
+}
+
+func (wt *stubWorkingTree) FileHashesFromRef(ref, subPath string) (*FileHashes, error) {
+	return &FileHashes{}, nil
+}
+
+func (wt *stubWorkingTree) RevSync(rev string) error {
+	return nil
+}
+
+func (wt *stubWorkingTree) RevisionFromTag(tag string) (string, error) {
+	return "", nil
+}
+
+func (wt *stubWorkingTree) ReachableTag(rev string) (string, error) {
+	return "", nil
+}
+
+func (wt *stubWorkingTree) TimeFromRevision(rev string) (time.Time, error) {
+	return time.Time{}, nil
+}
+
+func (wt *stubWorkingTree) Hasher() Hasher {
+	return &sha256Hasher{}
+}
+
 func TestStripImportCommentPackage(t *testing.T) {
 	wt := &gitWorkingTree{
 		anyWorkingTree: anyWorkingTree{

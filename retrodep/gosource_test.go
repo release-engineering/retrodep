@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@ package retrodep
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"golang.org/x/tools/go/vcs"
@@ -308,5 +309,84 @@ func TestImportPathFromFilepath(t *testing.T) {
 			t.Errorf("%s: wrong path for %s: got %q, want %q",
 				test.name, test.filePath, importPath, test.importPath)
 		}
+	}
+}
+
+type mockWorkingTree struct{ stubWorkingTree }
+
+func (m *mockWorkingTree) FileHashesFromRef(ref, subPath string) (FileHashes, error) {
+	hashes := make(FileHashes)
+	// This is the correct hash for nl.go:
+	hashes["nl.go"] = "4ccdb7b17d6eaf1b51ed56932c020edcf323fd5734ce32d01a2713edeb17f6da"
+	return hashes, nil
+}
+
+func TestGoSourceDiff(t *testing.T) {
+	dir := "testdata/godep"
+	src, err := NewGoSource(dir, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Reset vcsRepoRootForImportPath after this test.
+	defer func() {
+		vcsRepoRootForImportPath = vcs.RepoRootForImportPath
+	}()
+
+	vcsRepoRootForImportPath = func(importPath string, _ bool) (*vcs.RepoRoot, error) {
+		return &vcs.RepoRoot{
+			Root: "example.com/foo/bar",
+		}, nil
+	}
+
+	project, err := src.Project("example.com/foo/bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wt := &mockWorkingTree{
+		stubWorkingTree: stubWorkingTree{
+			anyWorkingTree: anyWorkingTree{
+				hasher: &sha256Hasher{},
+			},
+		},
+	}
+
+	writer := &strings.Builder{}
+	changes, err := src.Diff(project, wt, writer, dir, "v1.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if changes != true {
+		t.Errorf("changes: got %t but expected %t", changes, true)
+	}
+
+	// Find which files are in the diff output.
+	output := writer.String()
+	lines := strings.Split(output, "\n")
+	newFiles := make(map[string]struct{})
+	for _, line := range lines {
+		if !strings.HasPrefix(line, "+++ ") {
+			continue
+		}
+
+		fields := strings.Split(line[4:], "\t")
+		newFiles[fields[0]] = struct{}{}
+	}
+
+	expected := []string{
+		"testdata/godep/Godeps/Godeps.json",
+		"testdata/godep/importcomment.go",
+		"testdata/godep/nonl.go",
+		"testdata/godep/nonl.txt",
+	}
+	for _, expect := range expected {
+		if _, ok := newFiles[expect]; !ok {
+			t.Errorf("missing: %s", expect)
+		}
+	}
+	if len(expected) != len(newFiles) {
+		t.Errorf("got %d, expected %d", len(newFiles), len(expected))
 	}
 }

@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/build"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -545,4 +546,74 @@ func (src GoSource) RepoPathForImportPath(importPath string) (*RepoPath, error) 
 	}
 
 	return &RepoPath{RepoRoot: *r}, err
+}
+
+// Diff writes (to out) the differences between the Go source code at
+// dir and the repository at revision ref, ignoring files which are
+// only present in the repository. It returns true if changes were
+// found and false if not.
+func (src GoSource) Diff(project *RepoPath, wt WorkingTree, out io.Writer, dir, ref string) (bool, error) {
+	// Hash the local files.
+	hashes, err := src.hashLocalFiles(wt, project, dir)
+	if err != nil {
+		return false, err
+	}
+
+	// Work out the sub-directory within the repository root to
+	// use for comparison.
+	subPath := project.SubPath
+	projDir := filepath.Join(project.Root, subPath)
+	log.Debugf("describing %s compared to %s", dir, projDir)
+
+	// If godep is in use, strip import comments from the
+	// project's vendored files (but not files from the top-level
+	// project).
+	strip := src.usesGodep && dir != src.Path
+
+	// Sync the files in the working tree to the requested ref,
+	// ready to diff them.
+	err = wt.RevSync(ref)
+	if err != nil {
+		return false, err
+	}
+
+	refHashes, err := wt.FileHashesFromRef(ref, subPath)
+	if err != nil {
+		return false, err
+	}
+
+	if strip {
+		// Update the working tree files corresponding to the
+		// local files.
+		var paths []string
+		for path := range hashes {
+			paths = append(paths, filepath.Join(subPath, path))
+		}
+
+		_, err := updateHashesAfterStrip(hashes, wt, ref, paths)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// For each file which differs, write the "diff -u" output.
+	// For files added compared to upstream, write the "diff -u"
+	// output compared to /dev/null.
+	changes := false
+	for _, mismatch := range hashes.Mismatches(refHashes, false) {
+		var refFile string
+
+		// Does the file exist in the working tree?
+		if _, ok := refHashes[mismatch]; ok {
+			refFile = filepath.Join(subPath, mismatch)
+		}
+
+		c, err := wt.Diff(out, refFile, filepath.Join(dir, mismatch))
+		if err != nil {
+			return changes, err
+		}
+
+		changes = changes || c
+	}
+	return changes, nil
 }
