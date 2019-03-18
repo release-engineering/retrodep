@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -84,6 +84,10 @@ type WorkingTree interface {
 	//
 	// The file content may be written to w even if no change was made.
 	StripImportComment(path string, w io.Writer) (bool, error)
+
+	// Diff writes output to out from 'diff -Nu' comparing the
+	// path within the working tree with the localFile.
+	Diff(out io.Writer, path, localFile string) error
 }
 
 // anyWorkingTree uses the golang.org/x/tools/go/vcs Cmd type for
@@ -101,6 +105,7 @@ func NewWorkingTree(project *vcs.RepoRoot) (WorkingTree, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	err = project.VCS.Create(dir, project.Repo)
 	if err != nil {
 		os.RemoveAll(dir)
@@ -271,4 +276,25 @@ func (wt *anyWorkingTree) StripImportComment(path string, w io.Writer) (bool, er
 	}
 
 	return changed, nil
+}
+
+// Diff writes output to stdout from 'diff -Nu' comparing the
+// path within the working tree with the localFile.
+func (wt *anyWorkingTree) Diff(out io.Writer, path, localFile string) error {
+	if path == "" {
+		path = "/dev/null"
+	} else if path[0] != '/' {
+		path = filepath.Join(wt.Dir, path)
+	}
+
+	p := execCommand("diff", "-Nu", path, localFile)
+	p.Stdout = out
+	err := p.Run()
+
+	// Ignore the exit status.
+	if _, ok := err.(*exec.ExitError); !ok {
+		return err
+	}
+
+	return nil
 }
