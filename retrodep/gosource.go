@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/build"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -540,4 +541,65 @@ func (src GoSource) RepoPathForImportPath(importPath string) (*RepoPath, error) 
 	}
 
 	return &RepoPath{RepoRoot: *r}, err
+}
+
+func (src GoSource) Diff(project *RepoPath, wt WorkingTree, out io.Writer, dir, ref string) error {
+	// Hash the local files.
+	hashes, err := src.hashLocalFiles(wt.Hasher(), project, dir)
+	if err != nil {
+		return err
+	}
+
+	// Work out the sub-directory within the repository root to
+	// use for comparison.
+	subPath := project.SubPath
+	projDir := filepath.Join(project.Root, subPath)
+	log.Debugf("describing %s compared to %s", dir, projDir)
+
+	// If godep is in use, strip import comments from the
+	// project's vendored files (but not files from the top-level
+	// project).
+	strip := src.usesGodep && dir != src.Path
+
+	// Sync the files in the working tree to the requested ref,
+	// ready to diff them.
+	err = wt.RevSync(ref)
+	if err != nil {
+		return err
+	}
+
+	refHashes, err := wt.FileHashesFromRef(ref, subPath)
+	if err != nil {
+		return err
+	}
+
+	if strip {
+		// Update the working tree files corresponding to the
+		// local files.
+		var paths []string
+		for path := range hashes.hashes {
+			paths = append(paths, filepath.Join(subPath, path))
+		}
+
+		_, err := updateHashesAfterStrip(hashes, wt, ref, paths)
+		if err != nil {
+			return err
+		}
+	}
+
+	// For each file which differs, write the "diff -u" output.
+	for _, mismatch := range hashes.Mismatches(refHashes, false) {
+		var refFile string
+
+		// Does the file exist in the working tree?
+		if _, ok := refHashes.hashes[mismatch]; ok {
+			refFile = filepath.Join(subPath, mismatch)
+		}
+
+		err = wt.Diff(out, refFile, filepath.Join(dir, mismatch))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
