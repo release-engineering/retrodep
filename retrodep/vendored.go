@@ -278,6 +278,42 @@ func chooseBestTag(tags []string) string {
 	return tag
 }
 
+func (src GoSource) hashLocalFiles(hasher Hasher, project *RepoPath, dir string) (FileHashes, error) {
+	// Make a local copy of src.excludes we can add keys to
+	excludes := make(map[string]struct{})
+	for key := range src.excludes {
+		excludes[key] = struct{}{}
+	}
+
+	// Ignore vendor directory
+	excludes[filepath.Join(dir, "vendor")] = struct{}{}
+
+	// Work out the sub-directory within the repository root to
+	// use for comparison.
+	subPath := project.SubPath
+	projDir := filepath.Join(project.Root, subPath)
+	log.Debugf("describing %s compared to %s", dir, projDir)
+
+	// Compute the hashes of the local files
+	hashes, err := NewFileHashes(hasher, dir, excludes)
+	if err != nil {
+		return nil, err
+	}
+
+	for path := range hashes {
+		// Ignore dot files (e.g. .git)
+		if strings.HasPrefix(path, ".") {
+			delete(hashes, path)
+		}
+	}
+
+	if len(hashes) == 0 {
+		return nil, ErrorNoFiles
+	}
+
+	return hashes, nil
+}
+
 // DescribeProject attempts to identify the tag in the version control
 // system which corresponds to the project, based on comparison with
 // files in dir. Vendored files and files whose names begin with "."
@@ -295,14 +331,10 @@ func (src GoSource) DescribeProject(
 	}
 	defer wt.Close()
 
-	// Make a local copy of src.excludes we can add keys to
-	excludes := make(map[string]struct{})
-	for key := range src.excludes {
-		excludes[key] = struct{}{}
+	hashes, err := src.hashLocalFiles(wt, project, dir)
+	if err != nil {
+		return nil, err
 	}
-
-	// Ignore vendor directory
-	excludes[filepath.Join(dir, "vendor")] = struct{}{}
 
 	// Work out the sub-directory within the repository root to
 	// use for comparison.
@@ -310,22 +342,6 @@ func (src GoSource) DescribeProject(
 	projDir := filepath.Join(project.Root, subPath)
 	log.Debugf("describing %s compared to %s", dir, projDir)
 
-	// Compute the hashes of the local files
-	hashes, err := NewFileHashes(wt, dir, excludes)
-	if err != nil {
-		return nil, err
-	}
-
-	for path := range hashes {
-		// Ignore dot files (e.g. .git)
-		if strings.HasPrefix(path, ".") {
-			delete(hashes, path)
-		}
-	}
-
-	if len(hashes) == 0 {
-		return nil, ErrorNoFiles
-	}
 	// If godep is in use, strip import comments from the
 	// project's vendored files (but not files from the top-level
 	// project).
