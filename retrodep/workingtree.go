@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -84,6 +85,11 @@ type WorkingTree interface {
 	//
 	// The file content may be written to w even if no change was made.
 	StripImportComment(path string, w io.Writer) (bool, error)
+
+	// Diff writes output to out from 'diff -u' comparing the
+	// path within the working tree with the localFile. It returns
+	// true if changes were found and false if not.
+	Diff(out io.Writer, path, localFile string) (bool, error)
 }
 
 // anyWorkingTree uses the golang.org/x/tools/go/vcs Cmd type for
@@ -101,6 +107,7 @@ func NewWorkingTree(project *vcs.RepoRoot) (WorkingTree, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	err = project.VCS.Create(dir, project.Repo)
 	if err != nil {
 		os.RemoveAll(dir)
@@ -271,4 +278,38 @@ func (wt *anyWorkingTree) StripImportComment(path string, w io.Writer) (bool, er
 	}
 
 	return changed, nil
+}
+
+// Diff writes output to stdout from 'diff -u' comparing the
+// path within the working tree with the localFile. It returns
+// true if changes were found and false if not.
+func (wt *anyWorkingTree) Diff(out io.Writer, path, localFile string) (bool, error) {
+	if path == "" {
+		path = "/dev/null"
+	} else if path[0] != '/' {
+		path = filepath.Join(wt.Dir, path)
+	}
+
+	p := execCommand("diff", "-u", path, localFile)
+	p.Stdout = out
+	err := p.Run()
+
+	changes := false
+	if err != nil {
+		// Find the exit code from an exec.ExitError by using
+		// the embedded os.ProcessState's Sys method.
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if waitStatus, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+				// Exit codes for diff are:
+				// 0: no differences were found
+				// 1: some differences were found
+				// >1: trouble
+				if waitStatus.Exited() && waitStatus.ExitStatus() == 1 {
+					return true, nil
+				}
+			}
+		}
+	}
+
+	return changes, err
 }

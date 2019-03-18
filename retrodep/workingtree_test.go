@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@ package retrodep
 import (
 	"bytes"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -93,7 +94,7 @@ func TestPseudoVersion(t *testing.T) {
 				timeErr: io.EOF,
 			},
 			timeFromRevisionCalled: true,
-			err: io.EOF,
+			err:                    io.EOF,
 		},
 
 		tcase{
@@ -101,7 +102,7 @@ func TestPseudoVersion(t *testing.T) {
 				name:   "no-reachable",
 				tagErr: ErrorVersionNotFound,
 			},
-			pv: "v0.0.0-0.20060102150405-d4c3dbfa77a7",
+			pv:                     "v0.0.0-0.20060102150405-d4c3dbfa77a7",
 			timeFromRevisionCalled: true,
 		},
 
@@ -110,7 +111,7 @@ func TestPseudoVersion(t *testing.T) {
 				name: "reachable-nonsemver",
 				tag:  "v1.2.0beta1",
 			},
-			pv: "v1.2.0beta1-1.20060102150405-d4c3dbfa77a7",
+			pv:                     "v1.2.0beta1-1.20060102150405-d4c3dbfa77a7",
 			timeFromRevisionCalled: true,
 		},
 
@@ -119,7 +120,7 @@ func TestPseudoVersion(t *testing.T) {
 				name: "reachable-semver",
 				tag:  "v1.2.0",
 			},
-			pv: "v1.2.1-0.20060102150405-d4c3dbfa77a7",
+			pv:                     "v1.2.1-0.20060102150405-d4c3dbfa77a7",
 			timeFromRevisionCalled: true,
 		},
 
@@ -128,7 +129,7 @@ func TestPseudoVersion(t *testing.T) {
 				name: "reachable-presemver",
 				tag:  "v1.2.0-pre1",
 			},
-			pv: "v1.2.0-pre1.0.20060102150405-d4c3dbfa77a7",
+			pv:                     "v1.2.0-pre1.0.20060102150405-d4c3dbfa77a7",
 			timeFromRevisionCalled: true,
 		},
 	}
@@ -214,5 +215,34 @@ func TestStripImportCommentNewline(t *testing.T) {
 	}
 	if changed {
 		t.Fatalf("changed is incorrect")
+	}
+}
+
+func TestDiff(t *testing.T) {
+	defer mockExecCommand()()
+
+	wt := &gitWorkingTree{
+		anyWorkingTree: anyWorkingTree{
+			Dir: "testdata/gosource",
+			VCS: vcs.ByCmd("git"),
+		},
+	}
+
+	// This will be the file contents *and* the output of 'diff -u'.
+	mockedStdout = "--- ignored.go\n+++ignored.go\n@@ -0,0 +1 @@\n+foo\n"
+	mockedExitStatus = 1
+
+	captured := &strings.Builder{}
+	changes, err := wt.Diff(captured, "ignored.go", "ignored.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if changes != true {
+		t.Errorf("changes: got %t, expected %t", changes, true)
+	}
+
+	if captured.String() != mockedStdout {
+		t.Errorf("got %q, wanted %q", captured.String(), mockedStdout)
 	}
 }
