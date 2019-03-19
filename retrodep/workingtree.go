@@ -57,6 +57,9 @@ type WorkingTree interface {
 	// Should be something that supports creating pseudo-versions.
 	Describable
 
+	// Should be something that supports hashing files.
+	Hasher
+
 	// TagSync syncs the repo to the named tag.
 	TagSync(tag string) error
 
@@ -70,7 +73,7 @@ type WorkingTree interface {
 	// revision ref. The returned FileHashes will be relative to
 	// the subPath, which is itself relative to the repository
 	// root.
-	FileHashesFromRef(ref, subPath string) (*FileHashes, error)
+	FileHashesFromRef(ref, subPath string) (FileHashes, error)
 
 	// RevSync syncs the repo to the named revision.
 	RevSync(rev string) error
@@ -96,8 +99,9 @@ type WorkingTree interface {
 // interacting with the working tree. Other types build on this to
 // provide methods not handled by vcs.Cmd.
 type anyWorkingTree struct {
-	Dir string
-	VCS *vcs.Cmd
+	Dir    string
+	VCS    *vcs.Cmd
+	hasher Hasher
 }
 
 // NewWorkingTree creates a local checkout of the version control
@@ -120,8 +124,10 @@ func NewWorkingTree(project *vcs.RepoRoot) (WorkingTree, error) {
 	}
 	switch project.VCS.Cmd {
 	case vcsGit:
+		wt.hasher = &gitHasher{}
 		return &gitWorkingTree{anyWorkingTree: wt}, nil
 	case vcsHg:
+		wt.hasher = &sha256Hasher{}
 		return &hgWorkingTree{anyWorkingTree: wt}, nil
 	}
 
@@ -278,6 +284,12 @@ func (wt *anyWorkingTree) StripImportComment(path string, w io.Writer) (bool, er
 	}
 
 	return changed, nil
+}
+
+// Hash returns the file hash for the filename absPath, hashed as
+// though it were in the repository as filename relativePath.
+func (wt *anyWorkingTree) Hash(relativePath, absPath string) (FileHash, error) {
+	return wt.hasher.Hash(relativePath, absPath)
 }
 
 // Diff writes output to stdout from 'diff -u' comparing the

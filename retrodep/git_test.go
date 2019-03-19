@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -222,13 +222,13 @@ func TestGitFileHashesFromRef(t *testing.T) {
 		"vendor/github.com/foo/bar/bar baz.go": FileHash(emptyhash),
 	}
 
-	if len(h.hashes) != len(expected) {
+	if len(h) != len(expected) {
 		t.Fatalf("wrong number of files: got %d, want %d",
-			len(h.hashes), len(expected))
+			len(h), len(expected))
 	}
 
 	for f, hash := range expected {
-		if h.hashes[f] != hash {
+		if h[f] != hash {
 			t.Fatalf("wrong filehashes: got %v, want %v",
 				h, expected)
 		}
@@ -285,10 +285,7 @@ func TestGitErrors(t *testing.T) {
 		t.Error("FileHashesFromRef: missing ErrorInvalidRef")
 	}
 
-	hasher, ok := NewHasher(vcsGit)
-	if !ok {
-		t.Fatal("unknown hasher")
-	}
+	hasher := &gitHasher{}
 	_, err = hasher.Hash("", "")
 	if _, ok := err.(*exec.ExitError); !ok {
 		t.Error("Hash: git failure was not reported")

@@ -59,35 +59,15 @@ func (h sha256Hasher) Hash(relativePath, absPath string) (FileHash, error) {
 	return FileHash(hex.EncodeToString(hash.Sum(nil))), nil
 }
 
-// NewHasher returns a new Hasher based on the provided vcs command.
-func NewHasher(vcsCmd string) (Hasher, bool) {
-	switch vcsCmd {
-	case vcsGit:
-		return &gitHasher{}, true
-	case vcsHg:
-		return &sha256Hasher{}, true
-	}
-	return nil, false
-}
-
 // FileHashes is a map of paths, relative to the top-level of the
 // version control system, to their hashes.
-type FileHashes struct {
-	// h is the Hasher used to create each FileHash
-	h Hasher
-
-	// hashes maps a relative filename to its FileHash
-	hashes map[string]FileHash
-}
+type FileHashes map[string]FileHash
 
 // NewFileHashes returns a new FileHashes from a filesystem tree at root,
 // whose files belong to the version control system named in vcsCmd. Keys in
 // the excludes map are filenames to ignore.
-func NewFileHashes(h Hasher, root string, excludes map[string]struct{}) (*FileHashes, error) {
-	hashes := &FileHashes{
-		h:      h,
-		hashes: make(map[string]FileHash),
-	}
+func NewFileHashes(h Hasher, root string, excludes map[string]struct{}) (FileHashes, error) {
+	hashes := make(FileHashes)
 	root = path.Clean(root)
 
 	// Make a local copy of excludes we can safely modify
@@ -153,7 +133,7 @@ func NewFileHashes(h Hasher, root string, excludes map[string]struct{}) (*FileHa
 		if err != nil {
 			return err
 		}
-		hashes.hashes[relativePath] = fileHash
+		hashes[relativePath] = fileHash
 		return nil
 	}
 	err := filepath.Walk(root, walkfn)
@@ -164,17 +144,17 @@ func NewFileHashes(h Hasher, root string, excludes map[string]struct{}) (*FileHa
 }
 
 // IsSubsetOf returns true if these file hashes are a subset of s.
-func (h *FileHashes) IsSubsetOf(s *FileHashes) bool {
+func (h FileHashes) IsSubsetOf(s FileHashes) bool {
 	return h.Mismatches(s, true) == nil
 }
 
 // Mismatches returns a slice of filenames from h whose hashes
 // mismatch those in s. If failFast is true at most one mismatch will
 // be returned.
-func (h *FileHashes) Mismatches(s *FileHashes, failFast bool) []string {
+func (h FileHashes) Mismatches(s FileHashes, failFast bool) []string {
 	var mismatches []string
-	for path, fileHash := range h.hashes {
-		sh, ok := s.hashes[path]
+	for path, fileHash := range h {
+		sh, ok := s[path]
 		if !ok {
 			// File not present in s
 			log.Debugf("%s: not present", path)

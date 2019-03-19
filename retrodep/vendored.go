@@ -116,7 +116,7 @@ func (src GoSource) VendoredProjects() (map[string]*RepoPath, error) {
 // import comments (in the same way as godep).  The boolean return
 // value indicates whether any of the supplied hashes were modified as
 // a result.
-func updateHashesAfterStrip(hashes *FileHashes, wt WorkingTree, ref string, paths []string) (bool, error) {
+func updateHashesAfterStrip(hashes FileHashes, wt WorkingTree, ref string, paths []string) (bool, error) {
 	// Update working tree to match the ref
 	err := wt.RevSync(ref)
 	if err != nil {
@@ -155,11 +155,11 @@ func updateHashesAfterStrip(hashes *FileHashes, wt WorkingTree, ref string, path
 		}
 
 		// Re-hash the altered file
-		h, err := hashes.h.Hash(path, f.Name())
+		h, err := wt.Hash(path, f.Name())
 		if err != nil {
 			return anyChanged, err
 		}
-		hashes.hashes[path] = h
+		hashes[path] = h
 		anyChanged = true
 
 	}
@@ -167,15 +167,15 @@ func updateHashesAfterStrip(hashes *FileHashes, wt WorkingTree, ref string, path
 	return anyChanged, nil
 }
 
-func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, subPath string, refs []string) ([]string, error) {
+func matchFromRefs(strip bool, hashes FileHashes, wt WorkingTree, subPath string, refs []string) ([]string, error) {
 	var paths []string
 	if strip {
-		for path := range hashes.hashes {
+		for path := range hashes {
 			paths = append(paths, filepath.Join(subPath, path))
 		}
 	}
 
-	matchFromRef := func(th *FileHashes, ref string) (bool, error) {
+	matchFromRef := func(th FileHashes, ref string) (bool, error) {
 		if hashes.IsSubsetOf(th) {
 			return true, nil
 		}
@@ -185,7 +185,7 @@ func matchFromRefs(strip bool, hashes *FileHashes, wt WorkingTree, subPath strin
 		}
 
 		for _, path := range paths {
-			if _, ok := th.hashes[path]; !ok {
+			if _, ok := th[path]; !ok {
 				// File missing from revision
 				return false, nil
 			}
@@ -304,12 +304,6 @@ func (src GoSource) DescribeProject(
 	// Ignore vendor directory
 	excludes[filepath.Join(dir, "vendor")] = struct{}{}
 
-	// Work out how to hash files ready for comparison
-	hasher, ok := NewHasher(project.VCS.Cmd)
-	if !ok {
-		return nil, ErrorUnknownVCS
-	}
-
 	// Work out the sub-directory within the repository root to
 	// use for comparison.
 	subPath := project.SubPath
@@ -317,19 +311,19 @@ func (src GoSource) DescribeProject(
 	log.Debugf("describing %s compared to %s", dir, projDir)
 
 	// Compute the hashes of the local files
-	hashes, err := NewFileHashes(hasher, dir, excludes)
+	hashes, err := NewFileHashes(wt, dir, excludes)
 	if err != nil {
 		return nil, err
 	}
 
-	for path := range hashes.hashes {
+	for path := range hashes {
 		// Ignore dot files (e.g. .git)
 		if strings.HasPrefix(path, ".") {
-			delete(hashes.hashes, path)
+			delete(hashes, path)
 		}
 	}
 
-	if len(hashes.hashes) == 0 {
+	if len(hashes) == 0 {
 		return nil, ErrorNoFiles
 	}
 	// If godep is in use, strip import comments from the

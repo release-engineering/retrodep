@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -135,7 +135,7 @@ func (g *gitWorkingTree) ReachableTag(rev string) (string, error) {
 
 // FileHashesFromRef parses the output of 'git ls-tree -r' to
 // return the file hashes for the given tag or revision ref.
-func (g *gitWorkingTree) FileHashesFromRef(ref, subPath string) (*FileHashes, error) {
+func (g *gitWorkingTree) FileHashesFromRef(ref, subPath string) (FileHashes, error) {
 	args := []string{"ls-tree", "-r", ref}
 	if subPath != "" {
 		args = append(args, subPath)
@@ -155,7 +155,7 @@ func (g *gitWorkingTree) FileHashesFromRef(ref, subPath string) (*FileHashes, er
 		os.Stderr.Write(buf.Bytes())
 		return nil, err
 	}
-	fh := make(map[string]FileHash)
+	fh := make(FileHashes)
 	scanner := bufio.NewScanner(buf)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -182,14 +182,7 @@ func (g *gitWorkingTree) FileHashesFromRef(ref, subPath string) (*FileHashes, er
 		fh[filename] = FileHash(fields[2])
 	}
 
-	hasher, ok := NewHasher(vcsGit)
-	if !ok {
-		return nil, ErrorUnknownVCS
-	}
-	return &FileHashes{
-		h:      hasher,
-		hashes: fh,
-	}, nil
+	return fh, nil
 }
 
 type gitHasher struct{}

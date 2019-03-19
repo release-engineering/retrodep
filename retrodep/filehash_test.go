@@ -33,34 +33,8 @@ func TestSha256Hasher(t *testing.T) {
 	}
 }
 
-func TestNewFileHasher(t *testing.T) {
-	_, ok := NewHasher("unknown")
-	if ok {
-		t.Error("bad return from NewHasher with unknown vcs")
-	}
-
-	h, ok := NewHasher(vcsGit)
-	if !ok {
-		t.Errorf("bad return from NewHasher(%q)", vcsGit)
-	} else if _, ok = h.(*gitHasher); !ok {
-		t.Errorf("bad return from NewHasher(%q): %T", vcsGit, h)
-	}
-
-	h, ok = NewHasher(vcsHg)
-	if !ok {
-		t.Errorf("bad return from NewHasher(%q)", vcsHg)
-	} else if _, ok = h.(*sha256Hasher); !ok {
-		t.Errorf("bad return from NewHasher(%q): %T", vcsHg, h)
-	}
-
-}
-
 func TestNewFileHashes(t *testing.T) {
-	hasher, ok := NewHasher("git")
-	if !ok {
-		t.Fatal("git unknown to NewHasher")
-	}
-	hashes, err := NewFileHashes(hasher, "testdata/gosource", nil)
+	hashes, err := NewFileHashes(&gitHasher{}, "testdata/gosource", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,11 +48,11 @@ func TestNewFileHashes(t *testing.T) {
 		"vendor/github.com/eggs/ham/ham.go":          emptyhash,
 		"vendor/github.com/eggs/ham/spam/ignored.go": emptyhash,
 	}
-	if len(hashes.hashes) != len(expected) {
+	if len(hashes) != len(expected) {
 		t.Fatalf("len(hashes[%v]) != %d", hashes, len(expected))
 	}
 	for key, value := range expected {
-		got, ok := hashes.hashes[key]
+		got, ok := hashes[key]
 		if !ok {
 			t.Errorf("%s missing", key)
 			continue
@@ -92,11 +66,7 @@ func TestNewFileHashes(t *testing.T) {
 func TestNewFileHashesExclude(t *testing.T) {
 	excludes := make(map[string]struct{})
 	excludes["testdata/gosource/ignored.go"] = struct{}{}
-	hasher, ok := NewHasher("git")
-	if !ok {
-		t.Fatal("git unknown to NewHasher")
-	}
-	hashes, err := NewFileHashes(hasher, "testdata/gosource", excludes)
+	hashes, err := NewFileHashes(&gitHasher{}, "testdata/gosource", excludes)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,11 +76,11 @@ func TestNewFileHashesExclude(t *testing.T) {
 		"vendor/github.com/eggs/ham/ham.go":          emptyhash,
 		"vendor/github.com/eggs/ham/spam/ignored.go": emptyhash,
 	}
-	if len(hashes.hashes) != len(expected) {
+	if len(hashes) != len(expected) {
 		t.Fatalf("len(hashes[%v]) != %d", hashes, len(expected))
 	}
 	for key, value := range expected {
-		got, ok := hashes.hashes[key]
+		got, ok := hashes[key]
 		if !ok {
 			t.Errorf("%s missing", key)
 			continue
@@ -122,10 +92,7 @@ func TestNewFileHashesExclude(t *testing.T) {
 }
 
 func TestIsSubsetOf(t *testing.T) {
-	hasher, ok := NewHasher("git")
-	if !ok {
-		t.Fatal("git unknown to NewHasher")
-	}
+	hasher := &gitHasher{}
 	hashes, err := NewFileHashes(hasher, "testdata/gosource", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -135,24 +102,18 @@ func TestIsSubsetOf(t *testing.T) {
 		t.Fatalf("not subset of self")
 	}
 
-	other := &FileHashes{
-		h:      hasher,
-		hashes: make(map[string]FileHash),
+	other := make(FileHashes)
+	for k, v := range hashes {
+		other[k] = v
 	}
-	for k, v := range hashes.hashes {
-		other.hashes[k] = v
-	}
-	hashes.hashes["foo"] = FileHash("")
+	hashes["foo"] = FileHash("")
 	if hashes.IsSubsetOf(other) {
 		t.Fail()
 	}
 }
 
 func TestMismatches(t *testing.T) {
-	hasher, ok := NewHasher("git")
-	if !ok {
-		t.Fatal("git unknown to NewHasher")
-	}
+	hasher := &gitHasher{}
 	hashes, err := NewFileHashes(hasher, "testdata/gosource", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -162,15 +123,12 @@ func TestMismatches(t *testing.T) {
 		t.Fatalf("mismatches self")
 	}
 
-	other := &FileHashes{
-		h:      hasher,
-		hashes: make(map[string]FileHash),
-	}
-	for k, v := range hashes.hashes {
-		other.hashes[k] = v
+	other := make(FileHashes)
+	for k, v := range hashes {
+		other[k] = v
 	}
 
-	other.hashes["foo"] = FileHash("")
+	other["foo"] = FileHash("")
 	if hashes.Mismatches(hashes, false) != nil {
 		t.Fatalf("extra value in s reported as mismatch")
 	}
@@ -189,8 +147,8 @@ func TestMismatches(t *testing.T) {
 		return true
 	}
 
-	hashes.hashes["foo"] = FileHash("123")
-	hashes.hashes["bar"] = FileHash("123")
+	hashes["foo"] = FileHash("123")
+	hashes["bar"] = FileHash("123")
 	mismatches := hashes.Mismatches(other, false)
 	if !eq(mismatches, []string{"foo", "bar"}) {
 		t.Errorf("got %v, expected {\"foo\", \"bar\"}", mismatches)

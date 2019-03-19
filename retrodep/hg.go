@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -142,12 +142,7 @@ func (h *hgWorkingTree) ReachableTag(rev string) (string, error) {
 
 // FileHashesFromRef returns the file hashes for the given tag or
 // revision ref.
-func (h *hgWorkingTree) FileHashesFromRef(ref, subPath string) (*FileHashes, error) {
-	hasher, ok := NewHasher(vcsHg)
-	if !ok {
-		return nil, ErrorUnknownVCS
-	}
-
+func (h *hgWorkingTree) FileHashesFromRef(ref, subPath string) (FileHashes, error) {
 	dir, err := ioutil.TempDir("", "retrodep.")
 	if err != nil {
 		return nil, errors.Wrapf(err, "FileHashesFromRef(%s)", ref)
@@ -164,5 +159,5 @@ func (h *hgWorkingTree) FileHashesFromRef(ref, subPath string) (*FileHashes, err
 		os.Stderr.Write(buf.Bytes())
 		return nil, err
 	}
-	return NewFileHashes(hasher, filepath.Join(dir, subPath), nil)
+	return NewFileHashes(&sha256Hasher{}, filepath.Join(dir, subPath), nil)
 }
