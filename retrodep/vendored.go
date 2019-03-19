@@ -304,12 +304,6 @@ func (src GoSource) DescribeProject(
 	// Ignore vendor directory
 	excludes[filepath.Join(dir, "vendor")] = struct{}{}
 
-	// Work out how to hash files ready for comparison
-	hasher, ok := NewHasher(project.VCS.Cmd)
-	if !ok {
-		return nil, ErrorUnknownVCS
-	}
-
 	// Work out the sub-directory within the repository root to
 	// use for comparison.
 	subPath := project.SubPath
@@ -317,7 +311,7 @@ func (src GoSource) DescribeProject(
 	log.Debugf("describing %s compared to %s", dir, projDir)
 
 	// Compute the hashes of the local files
-	hashes, err := NewFileHashes(hasher, dir, excludes)
+	hashes, err := NewFileHashes(wt.Hasher(), dir, excludes)
 	if err != nil {
 		return nil, err
 	}

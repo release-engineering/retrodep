@@ -88,14 +88,18 @@ type WorkingTree interface {
 	// Diff writes output to out from 'diff -Nu' comparing the
 	// path within the working tree with the localFile.
 	Diff(out io.Writer, path, localFile string) error
+
+	// Hasher returns a Hasher suitable for this working tree.
+	Hasher() Hasher
 }
 
 // anyWorkingTree uses the golang.org/x/tools/go/vcs Cmd type for
 // interacting with the working tree. Other types build on this to
 // provide methods not handled by vcs.Cmd.
 type anyWorkingTree struct {
-	Dir string
-	VCS *vcs.Cmd
+	Dir    string
+	VCS    *vcs.Cmd
+	hasher Hasher
 }
 
 // NewWorkingTree creates a local checkout of the version control
@@ -118,8 +122,10 @@ func NewWorkingTree(project *vcs.RepoRoot) (WorkingTree, error) {
 	}
 	switch project.VCS.Cmd {
 	case vcsGit:
+		wt.hasher = &gitHasher{}
 		return &gitWorkingTree{anyWorkingTree: wt}, nil
 	case vcsHg:
+		wt.hasher = &sha256Hasher{}
 		return &hgWorkingTree{anyWorkingTree: wt}, nil
 	}
 
@@ -276,6 +282,11 @@ func (wt *anyWorkingTree) StripImportComment(path string, w io.Writer) (bool, er
 	}
 
 	return changed, nil
+}
+
+// Hasher returns a Hasher suitable for this working tree.
+func (wt *anyWorkingTree) Hasher() Hasher {
+	return wt.hasher
 }
 
 // Diff writes output to stdout from 'diff -Nu' comparing the
