@@ -47,13 +47,15 @@ fmt:
 		echo 'Running \033[0;32mgofmt\033[0m'; \
 		out=$$($(GOFMT) -l $(FILES_TO_CHECK)); \
 		echo $$out; \
-		test -z $$out; \
+		test -z "$$out"; \
 	fi
 
 lint:
 	@if test -n "$(FILES_TO_CHECK)"; then \
 		echo 'Running \033[0;32mgolint\033[0m'; \
-		test -z $$($(GOLINT) $(FILES_TO_CHECK)); \
+		out=$$($(GOLINT) $(FILES_TO_CHECK)); \
+		echo $$out; \
+		test -z "$$out"; \
 	fi
 
 imports:
@@ -61,7 +63,7 @@ imports:
 		echo 'Running \033[0;32mgoimports\033[0m'; \
 		out=$$($(GOIMPORTS) -l $(FILES_TO_CHECK)); \
 		echo $$out; \
-		test -z $$out; \
+		test -z "$$out"; \
 	fi
 
 check: fmt imports lint
