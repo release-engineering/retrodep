@@ -41,6 +41,7 @@ var helpFlag = flag.Bool("help", false, "print help")
 var importPath = flag.String("importpath", "", "top-level import path")
 var onlyImportPath = flag.Bool("only-importpath", false, "only show the top-level import path")
 var depsFlag = flag.Bool("deps", true, "show vendored dependencies")
+var diffArg = flag.String("diff", "", "compare with upstream ref (implies -deps=false)")
 var excludeFrom = flag.String("exclude-from", "", "ignore directory entries matching globs in `exclusions`")
 var debugFlag = flag.Bool("debug", false, "show debugging output")
 var outputArg = flag.String("o", "", "output format, one of: go-template=...")
@@ -238,8 +239,24 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	changes := false
 	for _, src := range srcs {
-		if *onlyImportPath {
+		if *diffArg != "" {
+			main := getProject(src, *importPath)
+
+			wt, err := retrodep.NewWorkingTree(&main.RepoRoot)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer wt.Close()
+
+			c, err := src.Diff(main, wt, os.Stdout, src.Path, *diffArg)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			changes = changes || c
+		} else if *onlyImportPath {
 			main := getProject(src, *importPath)
 			fmt.Println("*" + main.Root)
 		} else {
@@ -252,5 +269,9 @@ func main() {
 
 	if errorShown {
 		os.Exit(2)
+	}
+
+	if *diffArg != "" && changes {
+		os.Exit(5)
 	}
 }
