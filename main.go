@@ -71,7 +71,7 @@ func display(tmpl *template.Template, topLevelMarker string, ref *retrodep.Refer
 	builder.WriteString(topLevelMarker)
 	err := tmpl.Execute(&builder, ref)
 	if err != nil {
-		log.Fatalf("Error generating output. %s ", err)
+		log.Fatalf("Error generating output. %s", err)
 	}
 	fmt.Println(builder.String())
 }
@@ -133,7 +133,7 @@ func showVendored(tmpl *template.Template, src *retrodep.GoSource, top *retrodep
 		case nil:
 			display(tmpl, "", vp)
 		default:
-			log.Fatalf("%s: %s\n", project.Root, err)
+			log.Fatalf("%s: %s", project.Root, err)
 		}
 	}
 }
@@ -169,7 +169,7 @@ func processArgs(args []string) []*retrodep.GoSource {
 
 	usageMsg := fmt.Sprintf("usage: %s [OPTION]... PATH", progName)
 	usage = func(flaw string) {
-		log.Fatalf("%s: %s\n%s\n", progName, flaw, usageMsg)
+		log.Fatalf("%s: %s\n%s", progName, flaw, usageMsg)
 	}
 	err := cli.Parse(args[1:])
 	if err == flag.ErrHelp || *helpFlag { // Handle ‘-h’.
