@@ -27,7 +27,7 @@ import (
 	"text/template"
 
 	"github.com/op/go-logging"
-	"github.com/release-engineering/retrodep/retrodep"
+	"github.com/release-engineering/retrodep/v2/retrodep"
 )
 
 const defaultTemplate string = `

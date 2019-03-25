@@ -29,7 +29,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/tools/go/vcs"
 
-	"github.com/release-engineering/retrodep/retrodep/glide"
+	"github.com/release-engineering/retrodep/v2/retrodep/glide"
 )
 
 var vcsRepoRootForImportPath = vcs.RepoRootForImportPath

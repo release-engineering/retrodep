@@ -22,7 +22,7 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/release-engineering/retrodep/retrodep"
+	"github.com/release-engineering/retrodep/v2/retrodep"
 )
 
 func captureStdout(t *testing.T) (r io.Reader, reset func()) {

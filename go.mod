@@ -1,4 +1,4 @@
-module github.com/release-engineering/retrodep
+module github.com/release-engineering/retrodep/v2
 
 require (
 	github.com/Masterminds/semver v1.4.2
