@@ -315,22 +315,17 @@ func (src GoSource) hashLocalFiles(hasher Hasher, project *RepoPath, dir string)
 }
 
 // DescribeProject attempts to identify the tag in the version control
-// system which corresponds to the project, based on comparison with
-// files in dir. Vendored files and files whose names begin with "."
-// are ignored. If top is not nil, it should be a Reference to the
-// top-level package this project is vendored into.
+// system which corresponds to the project, available in the working
+// tree wt, based on comparison with files in dir. Vendored files and
+// files whose names begin with "."  are ignored. If top is not nil,
+// it should be a Reference to the top-level package this project is
+// vendored into.
 func (src GoSource) DescribeProject(
 	project *RepoPath,
+	wt WorkingTree,
 	dir string,
 	top *Reference,
 ) (*Reference, error) {
-	var ref *Reference
-	wt, err := NewWorkingTree(&project.RepoRoot)
-	if err != nil {
-		return nil, err
-	}
-	defer wt.Close()
-
 	hashes, err := src.hashLocalFiles(wt, project, dir)
 	if err != nil {
 		return nil, err
@@ -353,7 +348,7 @@ func (src GoSource) DescribeProject(
 		topver = top.Ver
 	}
 
-	ref = &Reference{
+	ref := &Reference{
 		TopPkg: toppkg,
 		TopVer: topver,
 		Pkg:    project.Root,
@@ -438,9 +433,13 @@ func (src GoSource) DescribeProject(
 // DescribeVendoredProject attempts to identify the tag in the version
 // control system which corresponds to the vendored copy of the
 // project.
-func (src GoSource) DescribeVendoredProject(project *RepoPath, top *Reference) (*Reference, error) {
+func (src GoSource) DescribeVendoredProject(
+	project *RepoPath,
+	wt WorkingTree,
+	top *Reference,
+) (*Reference, error) {
 	projRootImportPath := filepath.FromSlash(project.Root)
 	projDir := filepath.Join(src.Vendor(), projRootImportPath)
-	ref, err := src.DescribeProject(project, projDir, top)
+	ref, err := src.DescribeProject(project, wt, projDir, top)
 	return ref, err
 }

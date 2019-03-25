@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -36,11 +36,16 @@
 // searched. This function allows for repositories which are
 // collections of independently-vendored projects.
 //
-// The DescribeProject function takes a RepoPath and returns a
-// Representation, indicating the upstream version of the project or
-// vendored project, e.g.
+// The NewWorkingTree function makes a temporary local copy of the
+// upstream repository.
 //
-//     ref, rerr := retrodep.DescribeProject(proj, src.Path)
+//    wt, err := retrodep.NewWorkingTree(&proj.RepoRoot)
+//
+// The DescribeProject function takes a RepoPath, a WorkingTree, and
+// path within the tree, and returns a Representation, indicating the
+// upstream version of the project or vendored project, e.g.
+//
+//     ref, rerr := retrodep.DescribeProject(proj, wt, src.Path)
 //
 // It does this by comparing file hashes of the local files with those
 // from commits in the upstream repository.

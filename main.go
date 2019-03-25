@@ -93,7 +93,12 @@ func getProject(src *retrodep.GoSource, importPath string) *retrodep.RepoPath {
 
 func showTopLevel(tmpl *template.Template, src *retrodep.GoSource) *retrodep.Reference {
 	main := getProject(src, *importPath)
-	project, err := src.DescribeProject(main, src.Path, nil)
+	wt, err := retrodep.NewWorkingTree(&main.RepoRoot)
+	if err != nil {
+		log.Fatalf("%s: %s", src.Path, err)
+	}
+	defer wt.Close()
+	project, err := src.DescribeProject(main, wt, src.Path, nil)
 	var topLevelMarker string
 	if *templateArg != "" {
 		topLevelMarker = "*"
@@ -126,7 +131,12 @@ func showVendored(tmpl *template.Template, src *retrodep.GoSource, top *retrodep
 	// Describe each vendored project
 	for _, repo := range repos {
 		project := vendored[repo]
-		vp, err := src.DescribeVendoredProject(project, top)
+		wt, err := retrodep.NewWorkingTree(&project.RepoRoot)
+		if err != nil {
+			log.Fatalf("%s: %s", project.Root, err)
+		}
+		defer wt.Close()
+		vp, err := src.DescribeVendoredProject(project, wt, top)
 		switch err {
 		case retrodep.ErrorVersionNotFound:
 			displayUnknown(tmpl, "", vp, project.Root)
