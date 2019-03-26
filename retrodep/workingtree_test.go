@@ -170,8 +170,8 @@ func (wt *stubWorkingTree) Revisions() ([]string, error) {
 	return nil, nil
 }
 
-func (wt *stubWorkingTree) FileHashesFromRef(ref, subPath string) (*FileHashes, error) {
-	return &FileHashes{}, nil
+func (wt *stubWorkingTree) FileHashesFromRef(ref, subPath string) (FileHashes, error) {
+	return make(FileHashes), nil
 }
 
 func (wt *stubWorkingTree) RevSync(rev string) error {
