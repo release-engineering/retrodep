@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Tim Waugh
+// Copyright (C) 2018, 2019 Tim Waugh
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -59,5 +59,84 @@ func TestChooseBestTag(t *testing.T) {
 	best := chooseBestTag(tags)
 	if best != "1.2.2" {
 		t.Errorf("wrong best tag (%s)", best)
+	}
+}
+
+type dummyHasher struct{}
+
+func (h *dummyHasher) Hash(abs, rel string) (FileHash, error) {
+	return "foo", nil
+}
+
+type mockVendorWorkingTree struct {
+	stubWorkingTree
+
+	localHashes FileHashes
+}
+
+const matchVersion = "v1.0.0"
+const matchRevision = "0123456789abcdef"
+
+func (wt *mockVendorWorkingTree) FileHashesFromRef(ref, _ string) (FileHashes, error) {
+	if ref == matchRevision || ref == matchVersion {
+		// Pretend v1.0.0 is an exact copy of the local files.
+		return wt.localHashes, nil
+	}
+
+	// Pretend all other refs have no content at all.
+	return make(FileHashes), nil
+}
+
+func (wt *mockVendorWorkingTree) RevisionFromTag(tag string) (string, error) {
+	if tag != matchVersion {
+		return "", ErrorVersionNotFound
+	}
+	return matchRevision, nil
+}
+
+func (wt *mockVendorWorkingTree) ReachableTag(rev string) (tag string, err error) {
+	if rev == matchVersion {
+		tag = rev
+	} else {
+		err = ErrorVersionNotFound
+	}
+	return
+}
+
+func (wt *mockVendorWorkingTree) VersionTags() ([]string, error) {
+	return []string{"v2.0.0", "v1.0.0"}, nil
+}
+
+func TestDescribeProject(t *testing.T) {
+	src, err := NewGoSource("testdata/gosource", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	proj, err := src.Project("github.com/foo/bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wt := &mockVendorWorkingTree{}
+	wt.hasher = &dummyHasher{}
+
+	// Make a copy of the local file hashes, so we can mock them
+	// for "v1.0.0" in the working tree.
+	wt.localHashes, err = src.hashLocalFiles(wt, proj, src.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ref, err := src.DescribeProject(proj, wt, src.Path, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if ref.Ver != matchVersion {
+		t.Errorf("Version: got %s but expected %s", ref.Ver, matchVersion)
+	}
+	if ref.Rev != matchRevision {
+		t.Errorf("Revision: got %s but expected %s", ref.Rev, matchRevision)
 	}
 }
