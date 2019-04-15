@@ -60,6 +60,7 @@ additional-tags
 content_sets.yml
 container.yaml
 .oit
+OWNERS
 public
 scripts
 EOF
