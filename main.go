@@ -28,6 +28,7 @@ import (
 
 	"github.com/op/go-logging"
 	"github.com/release-engineering/retrodep/v2/retrodep"
+	"golang.org/x/tools/go/vcs"
 )
 
 const defaultTemplate string = `
@@ -91,9 +92,18 @@ func getProject(src *retrodep.GoSource, importPath string) *retrodep.RepoPath {
 	return main
 }
 
+func newWorkingTree(path string, project *vcs.RepoRoot) (wt retrodep.WorkingTree, err error) {
+	wt, err = retrodep.NewWorkingTree(project)
+	if err != nil {
+		log.Errorf("%s: %s, retrying", path, err)
+		wt, err = retrodep.NewWorkingTree(project)
+	}
+	return
+}
+
 func showTopLevel(tmpl *template.Template, src *retrodep.GoSource) *retrodep.Reference {
 	main := getProject(src, *importPath)
-	wt, err := retrodep.NewWorkingTree(&main.RepoRoot)
+	wt, err := newWorkingTree(src.Path, &main.RepoRoot)
 	if err != nil {
 		log.Fatalf("%s: %s", src.Path, err)
 	}
@@ -131,7 +141,7 @@ func showVendored(tmpl *template.Template, src *retrodep.GoSource, top *retrodep
 	// Describe each vendored project
 	for _, repo := range repos {
 		project := vendored[repo]
-		wt, err := retrodep.NewWorkingTree(&project.RepoRoot)
+		wt, err := newWorkingTree(project.Root, &project.RepoRoot)
 		if err != nil {
 			log.Fatalf("%s: %s", project.Root, err)
 		}
@@ -254,7 +264,7 @@ func main() {
 		if *diffArg != "" {
 			main := getProject(src, *importPath)
 
-			wt, err := retrodep.NewWorkingTree(&main.RepoRoot)
+			wt, err := newWorkingTree(src.Path, &main.RepoRoot)
 			if err != nil {
 				log.Fatal(err)
 			}
