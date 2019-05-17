@@ -37,13 +37,13 @@ type gitWorkingTree struct {
 // Revisions returns all revisions in the git repository, using 'git
 // rev-list --all'.
 func (g *gitWorkingTree) Revisions() ([]string, error) {
-	buf, err := g.anyWorkingTree.run("rev-list", "--all")
+	stdout, stderr, err := g.run("rev-list", "--all")
 	if err != nil {
-		os.Stderr.Write(buf.Bytes())
+		g.showOutput(stdout, stderr)
 		return nil, err
 	}
 	revisions := make([]string, 0)
-	output := bufio.NewScanner(buf)
+	output := bufio.NewScanner(stdout)
 	for output.Scan() {
 		revisions = append(revisions, strings.TrimSpace(output.Text()))
 	}
@@ -53,12 +53,12 @@ func (g *gitWorkingTree) Revisions() ([]string, error) {
 // RevisionFromTag returns the commit hash for the given tag, using
 // 'git rev-parse ...'
 func (g *gitWorkingTree) RevisionFromTag(tag string) (string, error) {
-	buf, err := g.anyWorkingTree.run("rev-parse", tag)
+	stdout, stderr, err := g.run("rev-parse", tag)
 	if err != nil {
-		os.Stderr.Write(buf.Bytes())
+		g.showOutput(stdout, stderr)
 		return "", err
 	}
-	rev := strings.TrimSpace(buf.String())
+	rev := strings.TrimSpace(stdout.String())
 	return rev, nil
 }
 
@@ -66,9 +66,9 @@ func (g *gitWorkingTree) RevisionFromTag(tag string) (string, error) {
 // 'git checkout ...'. The working tree must not have been locally
 // modified.
 func (g *gitWorkingTree) RevSync(rev string) error {
-	buf, err := g.anyWorkingTree.run("checkout", rev)
+	stdout, stderr, err := g.run("checkout", rev)
 	if err != nil {
-		os.Stderr.Write(buf.Bytes())
+		g.showOutput(stdout, stderr)
 	}
 	return err
 }
@@ -76,14 +76,15 @@ func (g *gitWorkingTree) RevSync(rev string) error {
 // TimeFromRevision returns the commit timestamp for the revision
 // rev, using 'git show -s --pretty=format:%cI ...'.
 func (g *gitWorkingTree) TimeFromRevision(rev string) (time.Time, error) {
-	run := g.anyWorkingTree.run
+	run := g.run
 	var t time.Time
-	buf, err := run("show", "-s", "--pretty=format:%cI", rev)
+	stdout, stderr, err := run("show", "-s", "--pretty=format:%cI", rev)
 	if err != nil {
+		g.showOutput(stdout, stderr)
 		return t, err
 	}
 
-	t, err = time.Parse(time.RFC3339, strings.TrimSpace(buf.String()))
+	t, err = time.Parse(time.RFC3339, strings.TrimSpace(stdout.String()))
 	return t, err
 }
 
@@ -92,11 +93,11 @@ func (g *gitWorkingTree) TimeFromRevision(rev string) (time.Time, error) {
 // are likely to be semvers. It returns ErrorVersionNotFound if no
 // suitable tag is found.
 func (g *gitWorkingTree) ReachableTag(rev string) (string, error) {
-	run := g.anyWorkingTree.run
+	run := g.run
 	var tag string
 	for _, match := range []string{"v[0-9]*", "[0-9]*"} {
-		buf, err := run("describe", "--tags", "--match="+match, rev)
-		output := strings.TrimSpace(buf.String())
+		stdout, stderr, err := run("describe", "--tags", "--match="+match, rev)
+		output := strings.TrimSpace(stdout.String() + stderr.String())
 		if err == nil {
 			tag = output
 			break
@@ -114,7 +115,7 @@ func (g *gitWorkingTree) ReachableTag(rev string) (string, error) {
 			strings.HasPrefix(output, "fatal: no annotated tag"):
 			err = ErrorVersionNotFound
 		default:
-			os.Stderr.Write(buf.Bytes())
+			g.showOutput(stdout, stderr)
 		}
 		return "", err
 	}
@@ -140,9 +141,9 @@ func (g *gitWorkingTree) FileHashesFromRef(ref, subPath string) (FileHashes, err
 	if subPath != "" {
 		args = append(args, subPath)
 	}
-	buf, err := g.anyWorkingTree.run(args...)
+	stdout, stderr, err := g.run(args...)
 	if err != nil {
-		output := strings.ToLower(buf.String())
+		output := strings.ToLower(stdout.String() + stderr.String())
 		switch {
 		case strings.HasPrefix(output, "fatal: not a valid object name "):
 			// This is a branch name, not a tag name
@@ -152,11 +153,11 @@ func (g *gitWorkingTree) FileHashesFromRef(ref, subPath string) (FileHashes, err
 			return nil, ErrorInvalidRef
 		}
 
-		os.Stderr.Write(buf.Bytes())
+		g.showOutput(stdout, stderr)
 		return nil, err
 	}
 	fh := make(FileHashes)
-	scanner := bufio.NewScanner(buf)
+	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
 		line := scanner.Text()
 		// <mode> SP <type> SP <object> TAB <file>

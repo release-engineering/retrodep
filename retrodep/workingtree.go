@@ -170,15 +170,21 @@ func (wt *anyWorkingTree) VersionTags() ([]string, error) {
 }
 
 // run runs the VCS command with the provided args
-// and returns a bytes.Buffer.
-func (wt *anyWorkingTree) run(args ...string) (*bytes.Buffer, error) {
+// and returns stdout and stderr (as bytes.Buffer).
+func (wt *anyWorkingTree) run(args ...string) (*bytes.Buffer, *bytes.Buffer, error) {
 	p := execCommand(wt.VCS.Cmd, args...)
-	var buf bytes.Buffer
-	p.Stdout = &buf
-	p.Stderr = &buf
+	var stdout, stderr bytes.Buffer
+	p.Stdout = &stdout
+	p.Stderr = &stderr
 	p.Dir = wt.Dir
 	err := p.Run()
-	return &buf, err
+	return &stdout, &stderr, err
+}
+
+// showOutput writes stdout to os.Stdout and stderr to os.Stderr.
+func (wt *anyWorkingTree) showOutput(stdout, stderr *bytes.Buffer) {
+	os.Stdout.Write(stdout.Bytes())
+	os.Stderr.Write(stderr.Bytes())
 }
 
 // PseudoVersion returns a semantic-like comparable version for a

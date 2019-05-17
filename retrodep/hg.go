@@ -52,13 +52,13 @@ func (h *hgWorkingTree) log(args []string, expect int) ([]hgLogEntry, error) {
 	if args != nil {
 		logArgs = append(logArgs, args...)
 	}
-	buf, err := h.anyWorkingTree.run(logArgs...)
+	stdout, stderr, err := h.run(logArgs...)
 	if err != nil {
-		os.Stderr.Write(buf.Bytes())
+		h.showOutput(stdout, stderr)
 		return nil, err
 	}
 	var logs hgLogs
-	err = xml.Unmarshal(buf.Bytes(), &logs)
+	err = xml.Unmarshal(stdout.Bytes(), &logs)
 	if err != nil {
 		return nil, err
 	}
@@ -154,9 +154,9 @@ func (h *hgWorkingTree) FileHashesFromRef(ref, subPath string) (FileHashes, erro
 		args = append(args, "--prefix", subPath)
 	}
 	args = append(args, dir)
-	buf, err := h.anyWorkingTree.run(args...)
+	stdout, stderr, err := h.run(args...)
 	if err != nil {
-		os.Stderr.Write(buf.Bytes())
+		h.showOutput(stdout, stderr)
 		return nil, err
 	}
 	return NewFileHashes(&sha256Hasher{}, filepath.Join(dir, subPath), nil)

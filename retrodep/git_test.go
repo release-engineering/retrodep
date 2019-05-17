@@ -103,18 +103,25 @@ func TestGitTimeFromRevision(t *testing.T) {
 		},
 	}
 
-	timeStr := []byte("2018-09-20T16:47:29+01:00")
-	mockedStdout = string(timeStr) + "\n"
-	var expected time.Time
-	expected.UnmarshalText(timeStr)
+	for _, stdout := range []string{
+		"",
+		"warning: inexact rename detection was skipped due to too many files.",
+	} {
+		timeStr := []byte("2018-09-20T16:47:29+01:00")
+		mockedStdout = string(timeStr) + "\n"
+		mockedStderr = stdout
+		var expected time.Time
+		expected.UnmarshalText(timeStr)
 
-	tm, err := wt.TimeFromRevision("d4c3dbfa77a74ae238e401d5d2197b45f30d8513")
-	if err != nil {
-		t.Fatal(err)
-	}
+		tm, err := wt.TimeFromRevision("d4c3dbfa77a74ae238e401d5d2197b45f30d8513")
+		if err != nil {
+			t.Error(err)
+			continue
+		}
 
-	if !tm.Equal(expected) {
-		t.Errorf("unexpected time: got %s, want %s", tm, expected)
+		if !tm.Equal(expected) {
+			t.Errorf("unexpected time: got %s, want %s", tm, expected)
+		}
 	}
 }
 
