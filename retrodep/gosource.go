@@ -533,19 +533,22 @@ func (src GoSource) RepoPathForImportPath(importPath string) (*RepoPath, error) 
 
 	// No replacement found, use the import pth as-is
 	r, err := vcs.RepoRootForImportPath(importPath, false)
-	if err != nil && strings.ContainsRune(importPath, '_') {
+	if err != nil {
+		u := strings.Index(importPath, "_")
+		if u == -1 {
+			return nil, err
+		}
 		// gopkg.in gives bad responses for paths like
 		// gopkg.in/foo/bar.v2/_examples/chat1
 		// because of the underscore. Remove it and try again.
-		u := strings.Index(importPath, "_")
 		importPath = path.Dir(importPath[:u])
-		r, nerr := vcs.RepoRootForImportPath(importPath, false)
-		if nerr == nil {
-			return &RepoPath{RepoRoot: *r}, nil
+		r2, err2 := vcs.RepoRootForImportPath(importPath, false)
+		if err2 != nil {
+			return nil, err // Returning the initial error is intentional
 		}
+		return &RepoPath{RepoRoot: *r2}, nil
 	}
-
-	return &RepoPath{RepoRoot: *r}, err
+	return &RepoPath{RepoRoot: *r}, nil
 }
 
 // Diff writes (to out) the differences between the Go source code at
