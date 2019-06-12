@@ -48,6 +48,7 @@ var debugFlag = flag.Bool("debug", false, "show debugging output")
 var outputArg = flag.String("o", "", "output format, one of: go-template=...")
 var templateArg = flag.String("template", "", "go template to use for output with Pkg, Repo, Rev, Tag and Ver (deprecated)")
 var exitFirst = flag.Bool("x", false, "exit on the first failure")
+var rhManifest = flag.Bool("rhManifest", false, "rh manifest format")
 
 var errorShown = false
 var usage func(string)
@@ -75,6 +76,29 @@ func display(tmpl *template.Template, topLevelMarker string, ref *retrodep.Refer
 		log.Fatalf("Error generating output. %s", err)
 	}
 	fmt.Println(builder.String())
+}
+
+func displayRhManifest(ref *retrodep.Reference) {
+	i := strings.LastIndex(ref.Pkg, "/")
+	var name string
+	if i == -1 {
+		name = ref.Pkg
+	} else {
+		name = ref.Pkg[i+1 : len(ref.Pkg)]
+	}
+
+	var version string
+	i = strings.Index(ref.Ver, "-")
+	if i == -1 {
+		version = ref.Ver
+	} else {
+		version = ref.Ver[0:i]
+	}
+	if version[0:1] == "v" {
+		version = version[1:len(version)]
+	}
+
+	fmt.Printf("%s %s %s\n", name, version, ref.Pkg)
 }
 
 func getProject(src *retrodep.GoSource, importPath string) *retrodep.RepoPath {
@@ -113,13 +137,15 @@ func showTopLevel(tmpl *template.Template, src *retrodep.GoSource) *retrodep.Ref
 	if *templateArg != "" {
 		topLevelMarker = "*"
 	}
-	switch err {
-	case retrodep.ErrorVersionNotFound:
-		displayUnknown(tmpl, topLevelMarker, project, main.Root)
-	case nil:
-		display(tmpl, topLevelMarker, project)
-	default:
-		log.Fatalf("%s: %s", src.Path, err)
+	if !*rhManifest {
+		switch err {
+		case retrodep.ErrorVersionNotFound:
+			displayUnknown(tmpl, topLevelMarker, project, main.Root)
+		case nil:
+			display(tmpl, topLevelMarker, project)
+		default:
+			log.Fatalf("%s: %s", src.Path, err)
+		}
 	}
 
 	return project
@@ -147,13 +173,18 @@ func showVendored(tmpl *template.Template, src *retrodep.GoSource, top *retrodep
 		}
 		defer wt.Close()
 		vp, err := src.DescribeVendoredProject(project, wt, top)
-		switch err {
-		case retrodep.ErrorVersionNotFound:
-			displayUnknown(tmpl, "", vp, project.Root)
-		case nil:
-			display(tmpl, "", vp)
-		default:
-			log.Fatalf("%s: %s", project.Root, err)
+
+		if *rhManifest {
+			displayRhManifest(vp)
+		} else {
+			switch err {
+			case retrodep.ErrorVersionNotFound:
+				displayUnknown(tmpl, "", vp, project.Root)
+			case nil:
+				display(tmpl, "", vp)
+			default:
+				log.Fatalf("%s: %s", project.Root, err)
+			}
 		}
 	}
 }
