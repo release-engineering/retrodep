@@ -492,7 +492,10 @@ func (src GoSource) Project(importPath string) (*RepoPath, error) {
 
 	repoRoot, err := vcsRepoRootForImportPath(importPath, false)
 	if err != nil {
-		return nil, err
+		return &RepoPath{
+			RepoRoot: vcs.RepoRoot{Root: importPath},
+			Err:      err,
+		}, nil
 	}
 
 	// Work out root path
