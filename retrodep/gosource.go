@@ -45,6 +45,7 @@ type RepoPath struct {
 
 	Version string
 
+	// Error encountered when finding repo path.
 	Err error
 }
 
