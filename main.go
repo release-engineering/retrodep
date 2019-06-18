@@ -143,6 +143,7 @@ func showVendored(tmpl *template.Template, src *retrodep.GoSource, top *retrodep
 		project := vendored[repo]
 		if project.Err != nil {
 			displayUnknown(tmpl, "", &retrodep.Reference{TopPkg: top.Pkg, TopVer: top.Ver, Pkg: repo}, repo)
+			log.Errorf("%s: %s", project.Root, project.Err)
 			continue
 		}
 		wt, err := newWorkingTree(project.Root, &project.RepoRoot)
