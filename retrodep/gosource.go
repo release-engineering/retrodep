@@ -44,6 +44,8 @@ type RepoPath struct {
 	SubPath string
 
 	Version string
+
+	Err error
 }
 
 var log = logging.MustGetLogger("retrodep")

@@ -24,6 +24,7 @@ import (
 
 	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
+	"golang.org/x/tools/go/vcs"
 )
 
 func pathStartsWith(dir, prefix string) bool {
@@ -55,7 +56,8 @@ func processVendoredSource(src *GoSource, search *vendoredSearch, pth string) er
 	thisImport := filepath.ToSlash(filepath.Dir(rel))
 	repoPath, err := src.RepoPathForImportPath(thisImport)
 	if err != nil {
-		return err
+		search.vendored[thisImport] = &RepoPath{RepoRoot: vcs.RepoRoot{Root: thisImport}, Err: err}
+		return nil
 	}
 
 	// The project name is relative to the vendor dir
