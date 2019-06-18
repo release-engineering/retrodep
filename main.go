@@ -102,17 +102,23 @@ func newWorkingTree(path string, project *vcs.RepoRoot) (wt retrodep.WorkingTree
 }
 
 func showTopLevel(tmpl *template.Template, src *retrodep.GoSource) *retrodep.Reference {
+	var topLevelMarker string
+	if *templateArg != "" {
+		topLevelMarker = "*"
+	}
 	main := getProject(src, *importPath)
+	if main.Err != nil {
+		log.Errorf("%s: %s", *importPath, main.Err)
+		displayUnknown(tmpl, topLevelMarker, nil, main.Root)
+		return nil
+	}
+
 	wt, err := newWorkingTree(src.Path, &main.RepoRoot)
 	if err != nil {
 		log.Fatalf("%s: %s", src.Path, err)
 	}
 	defer wt.Close()
 	project, err := src.DescribeProject(main, wt, src.Path, nil)
-	var topLevelMarker string
-	if *templateArg != "" {
-		topLevelMarker = "*"
-	}
 	switch err {
 	case retrodep.ErrorVersionNotFound:
 		displayUnknown(tmpl, topLevelMarker, project, main.Root)
