@@ -92,6 +92,7 @@ func getProject(src *retrodep.GoSource, importPath string) *retrodep.RepoPath {
 	return main
 }
 
+// newWorkingTree creates a new retrodep.WorkingTree for the path.
 func newWorkingTree(path string, project *vcs.RepoRoot) (wt retrodep.WorkingTree, err error) {
 	wt, err = retrodep.NewWorkingTree(project)
 	if err != nil {
@@ -115,8 +116,17 @@ func showTopLevel(tmpl *template.Template, src *retrodep.GoSource) *retrodep.Ref
 
 	wt, err := newWorkingTree(src.Path, &main.RepoRoot)
 	if err != nil {
-		log.Fatalf("%s: %s", src.Path, err)
+		log.Errorf("%s: %s", src.Path, err)
+
+		// Treat this as VersionNotFound.
+		project := &retrodep.Reference{
+			Pkg:  main.Root,
+			Repo: main.Repo,
+		}
+		displayUnknown(tmpl, topLevelMarker, project, main.Root)
+		return project
 	}
+
 	defer wt.Close()
 	project, err := src.DescribeProject(main, wt, src.Path, nil)
 	switch err {
@@ -148,7 +158,7 @@ func showVendored(tmpl *template.Template, src *retrodep.GoSource, top *retrodep
 	for _, repo := range repos {
 		project := vendored[repo]
 		if project.Err != nil {
-			log.Errorf("%s: %s", project.Root, project.Err)
+			log.Errorf("%s: %s", repo, project.Err)
 			ref := &retrodep.Reference{
 				TopPkg: top.Pkg,
 				TopVer: top.Ver,
@@ -157,10 +167,22 @@ func showVendored(tmpl *template.Template, src *retrodep.GoSource, top *retrodep
 			displayUnknown(tmpl, "", ref, repo)
 			continue
 		}
+
 		wt, err := newWorkingTree(project.Root, &project.RepoRoot)
 		if err != nil {
-			log.Fatalf("%s: %s", project.Root, err)
+			log.Errorf("%s: %s", project.Root, err)
+
+			// Treat this as VersionNotFound.
+			vp := &retrodep.Reference{
+				TopPkg: top.Pkg,
+				TopVer: top.Ver,
+				Pkg:    project.Root,
+				Repo:   project.Repo,
+			}
+			displayUnknown(tmpl, "", vp, project.Root)
+			continue
 		}
+
 		defer wt.Close()
 		vp, err := src.DescribeVendoredProject(project, wt, top)
 		switch err {
